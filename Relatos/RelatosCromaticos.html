@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Malla Galáctica con Detección Geométrica 3D</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Animaciones para las orbes de la malla */
+        @keyframes mesh-float-1 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(12vw, -15vh) scale(1.2); }
+            66% { transform: translate(-8vw, 10vh) scale(0.9); }
+        }
+
+        @keyframes mesh-float-2 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(-15vw, 12vh) scale(1.15); }
+            66% { transform: translate(10vw, -10vh) scale(0.85); }
+        }
+
+        @keyframes mesh-float-3 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(10vw, 18vh) scale(0.95); }
+            66% { transform: translate(-12vw, -12vh) scale(1.25); }
+        }
+
+        @keyframes mesh-float-4 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            50% { transform: translate(-18vw, -14vh) scale(1.3); }
+        }
+
+        @keyframes mesh-float-5 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            40% { transform: translate(15vw, -8vh) scale(1.1); }
+            80% { transform: translate(-10vw, 15vh) scale(0.9); }
+        }
+
+        /* Titileo sutil con glow para estrellas */
+        @keyframes star-glow-twinkle {
+            0%, 100% {
+                opacity: 0.15;
+                transform: scale(0.7);
+                box-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
+            }
+            50% {
+                opacity: 0.95;
+                transform: scale(1.25);
+                box-shadow: 0 0 6px rgba(255, 255, 255, 0.9), 0 0 10px rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        .animate-mesh-1 { animation: mesh-float-1 22s ease-in-out infinite; }
+        .animate-mesh-2 { animation: mesh-float-2 28s ease-in-out infinite; }
+        .animate-mesh-3 { animation: mesh-float-3 25s ease-in-out infinite; }
+        .animate-mesh-4 { animation: mesh-float-4 32s ease-in-out infinite; }
+        .animate-mesh-5 { animation: mesh-float-5 20s ease-in-out infinite; }
+
+        .star-point {
+            position: absolute;
+            background-color: #ffffff;
+            border-radius: 50%;
+            animation: star-glow-twinkle var(--duration, 4s) ease-in-out infinite;
+            animation-delay: var(--delay, 0s);
+            mix-blend-mode: color-dodge;
+        }
+
+        /* Canvas de WebGL Ripple Overlay */
+        #ripple-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 30;
+            cursor: pointer;
+            touch-action: none;
+        }
+
+        /* Panel de cámara */
+        #cam-ui { position: fixed; top: 12px; right: 12px; z-index: 50; width: 210px; font-family: system-ui, sans-serif; color: #fff; }
+        #cam-ui .glass { background: rgba(10,8,30,.65); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.15); border-radius: 14px; padding: 10px; }
+        #cam-ui button { width: 100%; border-radius: 9px; padding: 7px 10px; font-size: 13px; background: rgba(255,255,255,.14); color:#fff; border: 1px solid rgba(255,255,255,.2); cursor: pointer; }
+        #cam-ui button:disabled { opacity: .6; cursor: default; }
+        #cam-wrap { position: relative; margin-top: 8px; border-radius: 9px; overflow: hidden; background:#000; }
+        #cam-wrap video, #cam-wrap canvas { display:block; width:100%; }
+        #cam-overlay { position:absolute; inset:0; }
+        .chip { display:flex; align-items:center; gap:6px; font-size:11px; opacity:.45; transition: all .2s; padding:2px 4px; border-radius:6px; }
+        .chip i { width:10px; height:10px; border-radius:50%; display:inline-block; }
+        .chip-on { opacity:1; background: rgba(255,255,255,.14); transform: translateX(-2px); font-weight:600; }
+    </style>
+</head>
+<body class="bg-[#03020d] min-h-screen w-screen overflow-hidden m-0 p-0 relative select-none">
+
+    <!-- Canvas de Malla de Degradado Galáctico -->
+    <div class="fixed inset-0 w-full h-full pointer-events-none overflow-hidden">
+        <div class="absolute -top-[20%] -left-[10%] w-[65vw] h-[65vw] rounded-full bg-gradient-to-tr from-[#240046] via-[#3c096c] to-[#5a189a] opacity-80 blur-[100px] md:blur-[140px] animate-mesh-1"></div>
+        <div class="absolute top-[30%] -right-[15%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-br from-[#03045e] via-[#0077b6] to-[#00b4d8] opacity-75 blur-[110px] md:blur-[150px] animate-mesh-2"></div>
+        <div class="absolute -bottom-[20%] left-[15%] w-[70vw] h-[70vw] rounded-full bg-gradient-to-t from-[#7209b7] via-[#b5179e] to-[#f72585] opacity-70 blur-[120px] md:blur-[160px] animate-mesh-3"></div>
+        <div class="absolute top-[10%] left-[25%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-r from-[#4d194d] via-[#272640] to-[#00f5d4] opacity-65 blur-[90px] md:blur-[130px] animate-mesh-4"></div>
+        <div class="absolute bottom-[20%] right-[20%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-l from-[#0f1026] via-[#190028] to-[#6a040f] opacity-80 blur-[100px] md:blur-[140px] animate-mesh-5"></div>
+
+        <div class="absolute inset-0 bg-[#03020d]/20 backdrop-blur-[10px]"></div>
+
+        <div class="absolute inset-0 z-0 pointer-events-none">
+            <span class="star-point w-0.5 h-0.5 top-[15%] left-[22%]" style="--duration: 3.5s; --delay: 0.2s;"></span>
+            <span class="star-point w-1 h-1 top-[28%] left-[12%]" style="--duration: 5.1s; --delay: 1.5s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[8%] left-[35%]" style="--duration: 4.0s; --delay: 2.8s;"></span>
+            <span class="star-point w-1 h-1 top-[38%] left-[5%]" style="--duration: 3.2s; --delay: 0.7s;"></span>
+        </div>
+    </div>
+
+    <!-- CANVAS INTERACTIVO DE ONDAS DE AGUA -->
+    <canvas id="ripple-canvas"></canvas>
+
+    <!-- PANEL DE CÁMARA -->
+    <div id="cam-ui">
+        <div class="glass">
+            <button id="cam-start">Activar cámara</button>
+            <button id="cam-flip" class="hidden" style="margin-top:6px">Cambiar cámara</button>
+            <div id="cam-preview" class="hidden transition-opacity">
+                <div id="cam-wrap">
+                    <video id="cam-video" playsinline muted></video>
+                    <canvas id="cam-overlay"></canvas>
+                </div>
+            </div>
+            <p id="cam-status" style="font-size:11px;margin:8px 0 2px;opacity:.85">Activa la cámara para detectar geometría 3D</p>
+            <p id="cam-verts" style="font-size:10px;margin:0 0 6px;color:#00f5d4;font-family:monospace">Vértices: --</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px">
+                <div class="chip" data-emo="alegria"><i style="background:rgb(255,205,25)"></i>Alegría</div>
+                <div class="chip" data-emo="ansiedad"><i style="background:rgb(255,105,30)"></i>Ansiedad</div>
+                <div class="chip" data-emo="asco"><i style="background:rgb(140,210,35)"></i>Asco</div>
+                <div class="chip" data-emo="enojo"><i style="background:rgb(235,35,60)"></i>Enojo</div>
+                <div class="chip" data-emo="miedo"><i style="background:rgb(165,130,235)"></i>Miedo</div>
+                <div class="chip" data-emo="tristeza"><i style="background:rgb(35,120,255)"></i>Tristeza</div>
+            </div>
+            <button id="cam-toggle" style="margin-top:8px;font-size:11px">Mostrar / ocultar vista</button>
+        </div>
+    </div>
+
+    <script>
+// Firmas geométricas invariantes de los modelos 3D (Momentos de Hu + Solidez + Descriptores de Fourier)
+const REF_3D = {
+  "tristeza": [{"h3":-0.326,"h4":-1.43,"sol":0.576,"fd":[0.009,0.028,0.052,0.185,0.043,0.039,0.06,0.018,0.066,0.048]}],
+  "asco":     [{"h3":0.026,"h4":-2.007,"sol":0.873,"fd":[0.008,0.009,0.057,0.059,0.021,0.019,0.033,0.006,0.028,0.011]}],
+  "alegria":  [{"h3":-0.943,"h4":-1.372,"sol":0.747,"fd":[0.023,0.004,0.021,0.012,0.01,0.009,0.011,0.022,0.017,0.007]}],
+  "ansiedad": [{"h3":0.107,"h4":-2.595,"sol":0.824,"fd":[0.011,0.014,0.081,0.062,0.041,0.045,0.017,0.02,0.013,0.017]}],
+  "enojo":    [{"h3":-0.735,"h4":-2.2,"sol":0.456,"fd":[0.023,0.01,0.023,0.055,0.049,0.017,0.086,0.009,0.035,0.083]}],
+  "miedo":    [{"h3":-0.349,"h4":-0.983,"sol":0.501,"fd":[0.027,0.061,0.093,0.082,0.074,0.07,0.078,0.05,0.047,0.035]}]
+};
+
+const EMO = {
+  alegria:  { label: 'Alegría',  ripple: [255, 205, 25]  },
+  ansiedad: { label: 'Ansiedad', ripple: [255, 105, 30]  },
+  asco:     { label: 'Asco',     ripple: [140, 210, 35]  },
+  tristeza: { label: 'Tristeza', ripple: [35, 120, 255]  },
+  miedo:    { label: 'Miedo',    ripple: [165, 130, 235] },
+  enojo:    { label: 'Enojo',    ripple: [235, 35, 60]   }
+};
+
+// Filtro morfológico de limpieza de ruido
+function majority(mask, w, h) {
+  const out = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      const n = mask[i - w - 1] + mask[i - w] + mask[i - w + 1] +
+                mask[i - 1]     + mask[i]     + mask[i + 1] +
+                mask[i + w - 1] + mask[i + w] + mask[i + w + 1];
+      out[i] = n >= 5 ? 1 : 0;
+    }
+  }
+  return out;
+}
+
+// Envolvente convexa (Monotone Chain)
+function hull(pts) {
+  const copy = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of copy) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (let i = copy.length - 1; i >= 0; i--) { const p = copy[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  lo.pop(); up.pop();
+  return lo.concat(up);
+}
+
+function polyArea(p) {
+  let a = 0;
+  for (let i = 0; i < p.length; i++) {
+    const q = p[(i + 1) % p.length];
+    a += p[i][0] * q[1] - q[0] * p[i][1];
+  }
+  return Math.abs(a) / 2;
+}
+
+// Algoritmo Ramer-Douglas-Peucker para extraer los vértices estructurales de la silueta
+function simplifyPolygon(pts, epsilon) {
+  if (pts.length < 3) return pts;
+  let dmax = 0, index = 0;
+  const end = pts.length - 1;
+  const [x1, y1] = pts[0], [x2, y2] = pts[end];
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1e-9;
+
+  for (let i = 1; i < end; i++) {
+    const [x0, y0] = pts[i];
+    const d = Math.abs(dy * x0 - dx * y0 + x2 * y1 - y2 * x1) / len;
+    if (d > dmax) { index = i; dmax = d; }
+  }
+
+  if (dmax > epsilon) {
+    const rec1 = simplifyPolygon(pts.slice(0, index + 1), epsilon);
+    const rec2 = simplifyPolygon(pts.slice(index), epsilon);
+    return rec1.slice(0, -1).concat(rec2);
+  }
+  return [pts[0], pts[end]];
+}
+
+// Ordenamiento angular y extracción de vértices reales del contorno
+function extractVertices(bpts, cx, cy, bbox) {
+  if (bpts.length < 4) return bpts;
+  // Ordenar puntos del borde alrededor del centroide para formar el perímetro continuo
+  const ordered = bpts.slice().sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
+  // Submuestreo suave para evitar ruido de píxeles en escalera
+  const step = Math.max(1, Math.floor(ordered.length / 48));
+  const sampled = [];
+  for (let i = 0; i < ordered.length; i += step) sampled.push(ordered[i]);
+
+  const diag = Math.hypot(bbox[2] - bbox[0], bbox[3] - bbox[1]);
+  const epsilon = Math.max(2.2, diag * 0.045); // Tolerancia proporcional al tamaño de la figura
+  const verts = simplifyPolygon(sampled, epsilon);
+  return verts;
+}
+
+const NANG = 64, NHARM = 10;
+function describe(idx, w, h, mask) {
+  const n = idx.length;
+  let sx = 0, sy = 0;
+  for (let k = 0; k < n; k++) { const i = idx[k]; sx += i % w; sy += (i / w) | 0; }
+  const cx = sx / n, cy = sy / n;
+  let a = 0, b = 0, c = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
+  for (let k = 0; k < n; k++) {
+    const i = idx[k], px = i % w, py = (i / w) | 0, dx = px - cx, dy = py - cy;
+    a += dx * dx; b += dx * dy; c += dy * dy;
+    if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+  }
+  a /= n; b /= n; c /= n;
+  const tr = a + c, det = Math.max(1e-9, a * c - b * b), s = Math.sqrt(det), t = Math.sqrt(tr + 2 * s);
+  const ia = (c + s) / (s * t), ib = -b / (s * t), ic = (a + s) / (s * t);
+  let m30 = 0, m03 = 0, m21 = 0, m12 = 0;
+  const rad = new Float64Array(NANG), bpts = [];
+
+  for (let k = 0; k < n; k++) {
+    const i = idx[k], px = i % w, py = (i / w) | 0, dx = px - cx, dy = py - cy;
+    const u = ia * dx + ib * dy, v = ib * dx + ic * dy;
+    m30 += u * u * u; m03 += v * v * v; m21 += u * u * v; m12 += u * v * v;
+    let ang = Math.atan2(v, u); if (ang < 0) ang += 2 * Math.PI;
+    const bi = Math.min(NANG - 1, (ang / (2 * Math.PI) * NANG) | 0), r = Math.hypot(u, v);
+    if (r > rad[bi]) rad[bi] = r;
+    if (!mask[i - 1] || !mask[i + 1] || !mask[i - w] || !mask[i + w]) bpts.push([px, py]);
+  }
+
+  const n30 = m30 / n, n03 = m03 / n, n21 = m21 / n, n12 = m12 / n;
+  const h3 = (n30 - 3 * n12) ** 2 + (3 * n21 - n03) ** 2;
+  const h4 = (n30 + n12) ** 2 + (n21 + n03) ** 2;
+  let mr = 0; for (let i = 0; i < NANG; i++) mr += rad[i]; mr /= NANG;
+
+  const fd = [];
+  for (let k = 1; k <= NHARM; k++) {
+    let re = 0, im = 0;
+    for (let i = 0; i < NANG; i++) {
+      const th = 2 * Math.PI * k * i / NANG;
+      re += rad[i] * Math.cos(th);
+      im += rad[i] * Math.sin(th);
+    }
+    fd.push(Math.hypot(re, im) / (NANG * mr + 1e-9));
+  }
+
+  const hl = hull(bpts);
+  const sol = hl.length > 2 ? Math.min(1, n / polyArea(hl)) : 1;
+  const bbox = [x0, y0, x1, y1];
+  const vertices = extractVertices(bpts, cx, cy, bbox);
+  const lg = v => Math.log10(Math.abs(v) + 1e-9);
+
+  return { area: n, cx, cy, bbox, vertices, f: { h3: lg(h3), h4: lg(h4), sol, fd } };
+}
+
+/* SEGMENTACIÓN 100% GEOMÉTRICA POR LUMINANCIA ADAPTATIVA (SIN DETECCIÓN DE COLOR) */
+function segment(rgba, w, h, minArea, maxFrac) {
+  maxFrac = maxFrac || 0.55;
+  const total = w * h;
+  const gray = new Uint8Array(total);
+  const hist = new Int32Array(256);
+
+  // 1. Conversión pura a luminancia (escala de grises) ignorando matiz y saturación
+  for (let i = 0; i < total; i++) {
+    const g = (0.299 * rgba[i * 4] + 0.587 * rgba[i * 4 + 1] + 0.114 * rgba[i * 4 + 2]) | 0;
+    gray[i] = g;
+    hist[g]++;
+  }
+
+  // 2. Cálculo automático de umbral óptimo (Método de Otsu) para separar objeto de fondo
+  let sum = 0;
+  for (let t = 0; t < 256; t++) sum += t * hist[t];
+  let sumB = 0, wB = 0, wF = 0, varMax = 0, threshold = 128;
+  for (let t = 0; t < 256; t++) {
+    wB += hist[t];
+    if (wB === 0) continue;
+    wF = total - wB;
+    if (wF === 0) break;
+    sumB += t * hist[t];
+    const mB = sumB / wB;
+    const mF = (sum - sumB) / wF;
+    const varBetween = wB * wF * (mB - mF) * (mB - mF);
+    if (varBetween > varMax) { varMax = varBetween; threshold = t; }
+  }
+
+  // Detectar si el fondo de los bordes del encuadre es claro u oscuro para aislar la silueta sólida
+  let borderSum = 0, borderCount = 0;
+  for (let x = 0; x < w; x++) { borderSum += gray[x] + gray[(h - 1) * w + x]; borderCount += 2; }
+  for (let y = 0; y < h; y++) { borderSum += gray[y * w] + gray[y * w + (w - 1)]; borderCount += 2; }
+  const lightBg = (borderSum / borderCount) > threshold;
+
+  const raw = new Uint8Array(total);
+  for (let i = 0; i < total; i++) {
+    raw[i] = lightBg ? (gray[i] < threshold ? 1 : 0) : (gray[i] > threshold ? 1 : 0);
+  }
+
+  // 3. Limpieza morfológica y extracción de componentes conectados (siluetas sólidas)
+  const mask = majority(majority(raw, w, h), w, h);
+  const seen = new Uint8Array(total);
+  const parts = [];
+
+  for (let s = 0; s < total; s++) {
+    if (!mask[s] || seen[s]) continue;
+    const stack = [s], idx = [];
+    seen[s] = 1;
+    let touchesBorder = false;
+
+    while (stack.length) {
+      const i = stack.pop();
+      idx.push(i);
+      const x = i % w, y = (i / w) | 0;
+      if (x === 0 || x === w - 1 || y === 0 || y === h - 1) touchesBorder = true;
+
+      if (x > 0 && mask[i - 1] && !seen[i - 1]) { seen[i - 1] = 1; stack.push(i - 1); }
+      if (x < w - 1 && mask[i + 1] && !seen[i + 1]) { seen[i + 1] = 1; stack.push(i + 1); }
+      if (y > 0 && mask[i - w] && !seen[i - w]) { seen[i - w] = 1; stack.push(i - w); }
+      if (y < h - 1 && mask[i + w] && !seen[i + w]) { seen[i + w] = 1; stack.push(i + w); }
+    }
+
+    // Descartar fondo conectado a los bordes y ruido pequeño
+    if (!touchesBorder && idx.length >= minArea && idx.length <= total * maxFrac) {
+      parts.push(describe(idx, w, h, mask));
+    }
+  }
+  return parts;
+}
+
+const WT = { h3: 1.04, h4: 0.2, sol: 0.06, fd: 5.5 };
+function featDist(a, b) {
+  let f = 0;
+  for (let k = 0; k < NHARM; k++) f += Math.abs(a.fd[k] - b.fd[k]);
+  return WT.h3 * Math.abs(a.h3 - b.h3) + WT.h4 * Math.abs(a.h4 - b.h4) + WT.sol * Math.abs(a.sol - b.sol) + WT.fd * f;
+}
+
+function classify(blobs, refs, maxDist, margin) {
+  const out = []; margin = margin || 0;
+  for (const b of blobs) {
+    const ds = Object.keys(refs).map(e => ({ e, d: Math.min(...refs[e].map(r => featDist(b.f, r))) })).sort((x, y) => x.d - y.d);
+    if (ds[0].d <= maxDist && (ds.length < 2 || ds[1].d - ds[0].d >= margin)) {
+      out.push({
+        emotion: ds[0].e,
+        dist: ds[0].d,
+        area: b.area,
+        cx: b.cx,
+        cy: b.cy,
+        bbox: b.bbox,
+        vertices: b.vertices
+      });
+    }
+  }
+  return out;
+}
+
+/* ONDAS DE AGUA */
+(function () {
+  const canvas = document.getElementById('ripple-canvas');
+  const ctx = canvas.getContext('2d');
+  const off = document.createElement('canvas');
+  const octx = off.getContext('2d');
+  let width = 0, height = 0, wm = 0, hm = 0, img = null;
+  let cur = [], prev = [];
+  const damping = 0.972, step = 4;
+  let fading = false;
+
+  function init() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    wm = Math.floor(width / step); hm = Math.floor(height / step);
+    off.width = wm; off.height = hm;
+    img = octx.createImageData(wm, hm);
+    cur = [0, 1, 2].map(() => new Float32Array(wm * hm));
+    prev = [0, 1, 2].map(() => new Float32Array(wm * hm));
+  }
+
+  function addRipple(cx, cy, radius, strength, rgb) {
+    const mx = Math.floor(cx / step), my = Math.floor(cy / step);
+    for (let y = my - radius; y <= my + radius; y++) {
+      for (let x = mx - radius; x <= mx + radius; x++) {
+        if (x < 1 || x >= wm - 1 || y < 1 || y >= hm - 1) continue;
+        const d = Math.hypot(x - mx, y - my);
+        if (d > radius) continue;
+        const f = Math.cos((d / radius) * Math.PI * 0.5) * strength, i = y * wm + x;
+        for (let c = 0; c < 3; c++) prev[c][i] += f * rgb[c] / 255;
+      }
+    }
+  }
+
+  function simulate() {
+    const damp = fading ? 0.78 : damping;
+    for (let c = 0; c < 3; c++) {
+      const p = prev[c], q = cur[c];
+      for (let y = 1; y < hm - 1; y++) {
+        const o = y * wm;
+        for (let x = 1; x < wm - 1; x++) {
+          const i = o + x;
+          q[i] = ((p[i - 1] + p[i + 1] + p[i - wm] + p[i + wm]) * 0.5 - q[i]) * damp;
+        }
+      }
+    }
+    const t = prev; prev = cur; cur = t;
+    if (fading) {
+      let mx = 0; const p0 = prev[0], p1 = prev[1], p2 = prev[2];
+      for (let i = 0; i < p0.length; i += 7) mx = Math.max(mx, Math.abs(p0[i]), Math.abs(p1[i]), Math.abs(p2[i]));
+      if (mx < 0.15) { for (let c = 0; c < 3; c++) { prev[c].fill(0); cur[c].fill(0); } fading = false; }
+    }
+  }
+
+  function render() {
+    const d = img.data;
+    let any = false;
+    for (let y = 1; y < hm - 1; y++) {
+      for (let x = 1; x < wm - 1; x++) {
+        const i = y * wm + x, o = i * 4;
+        const e = [0, 0, 0];
+        for (let c = 0; c < 3; c++) {
+          const p = prev[c];
+          const gx = p[i + 1] - p[i - 1], gy = p[i + wm] - p[i - wm];
+          e[c] = Math.min(1, (Math.abs(p[i]) * 0.06 + Math.hypot(gx, gy) * 0.09));
+        }
+        const m = Math.max(e[0], e[1], e[2]);
+        if (m < 0.02) { d[o + 3] = 0; continue; }
+        any = true;
+        const k = 255 / m, glow = m * m * 0.35;
+        d[o]     = Math.min(255, e[0] * k * (1 - glow) + 255 * glow);
+        d[o + 1] = Math.min(255, e[1] * k * (1 - glow) + 255 * glow);
+        d[o + 2] = Math.min(255, e[2] * k * (1 - glow) + 255 * glow);
+        d[o + 3] = Math.min(235, m * 330);
+      }
+    }
+    ctx.clearRect(0, 0, width, height);
+    if (!any) return;
+    octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(off, 0, 0, width, height);
+  }
+
+  function loop() { simulate(); render(); requestAnimationFrame(loop); }
+
+  window.emitWave = function (nx, ny, rgb) {
+    if (fading) { for (let c = 0; c < 3; c++) { prev[c].fill(0); cur[c].fill(0); } fading = false; }
+    addRipple(nx * width, ny * height, 7, 40, rgb);
+  };
+  window.fadeWaves = function () { fading = true; };
+
+  const SOFT = [200, 225, 255];
+  let down = false, lx = 0, ly = 0;
+  const onUI = e => e.target.closest && e.target.closest('#cam-ui');
+  const burst = (x, y, drag) => addRipple(x, y, drag ? 4 : 7, drag ? 22 : 40, SOFT);
+  window.addEventListener('mousedown', e => { if (onUI(e)) return; down = true; lx = e.clientX; ly = e.clientY; burst(lx, ly); });
+  window.addEventListener('mousemove', e => { if (!down) return; if (Math.hypot(e.clientX - lx, e.clientY - ly) > 6) { burst(e.clientX, e.clientY, true); lx = e.clientX; ly = e.clientY; } });
+  window.addEventListener('mouseup', () => down = false);
+  window.addEventListener('resize', init);
+  init(); loop();
+})();
+
+/* CÁMARA + RECONOCIMIENTO GEOMÉTRICO Y VÉRTICES */
+(function () {
+  const MAX_DIST = 1.45, W = 320;
+  const video = document.getElementById('cam-video');
+  const overlay = document.getElementById('cam-overlay');
+  const octx = overlay.getContext('2d');
+  const work = document.createElement('canvas');
+  const wctx = work.getContext('2d', { willReadFrequently: true });
+  const statusEl = document.getElementById('cam-status');
+  const vertsEl = document.getElementById('cam-verts');
+  const btnStart = document.getElementById('cam-start');
+  const btnFlip = document.getElementById('cam-flip');
+  const preview = document.getElementById('cam-preview');
+  const chips = {};
+  document.querySelectorAll('[data-emo]').forEach(el => chips[el.dataset.emo] = el);
+
+  let refs = null, stream = null, facing = 'environment', mirrored = false, running = false;
+  const hits = {}, pos = {}, lastEmit = {}; let wasActive = false;
+  Object.keys(EMO).forEach(k => { hits[k] = 0; lastEmit[k] = 0; });
+
+  async function startCamera() {
+    try {
+      statusEl.textContent = 'Solicitando cámara…';
+      refs = REF_3D;
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+      video.srcObject = stream; await video.play();
+      const st = stream.getVideoTracks()[0].getSettings();
+      mirrored = st.facingMode ? st.facingMode === 'user' : facing === 'user' || !/Android|iPhone|iPad/i.test(navigator.userAgent);
+      video.style.transform = overlay.style.transform = mirrored ? 'scaleX(-1)' : 'none';
+      preview.classList.remove('hidden');
+      btnStart.textContent = 'Cámara activa'; btnStart.disabled = true;
+      btnFlip.classList.remove('hidden');
+      statusEl.textContent = 'Muestra un modelo 3D a la cámara';
+      if (!running) { running = true; tick(); }
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = 'No se pudo abrir la cámara';
+    }
+  }
+
+  function drawGeometry(verts, rgb) {
+    if (!verts || verts.length < 3) return;
+    const [r, g, b] = rgb;
+    // Dibujar aristas entre vértices
+    octx.strokeStyle = `rgba(${r},${g},${b}, 0.9)`;
+    octx.fillStyle = `rgba(${r},${g},${b}, 0.18)`;
+    octx.lineWidth = 1.8;
+    octx.beginPath();
+    octx.moveTo(verts[0][0], verts[0][1]);
+    for (let i = 1; i < verts.length; i++) octx.lineTo(verts[i][0], verts[i][1]);
+    octx.closePath();
+    octx.fill();
+    octx.stroke();
+
+    // Dibujar cada vértice detectado
+    for (const [vx, vy] of verts) {
+      octx.fillStyle = '#ffffff';
+      octx.beginPath();
+      octx.arc(vx, vy, 2.5, 0, Math.PI * 2);
+      octx.fill();
+    }
+  }
+
+  function tick() {
+    if (video.readyState >= 2 && video.videoWidth) {
+      const w = W, h = Math.round(W * video.videoHeight / video.videoWidth);
+      if (work.width !== w || work.height !== h) { work.width = w; work.height = h; overlay.width = w; overlay.height = h; }
+      wctx.drawImage(video, 0, 0, w, h);
+      const frame = wctx.getImageData(0, 0, w, h);
+
+      // Segmentación estrictamente geométrica (sin color)
+      const blobs = segment(frame.data, w, h, Math.round(w * h * 0.008));
+      const found = {};
+      for (const d of classify(blobs, refs, MAX_DIST)) {
+        if (!found[d.emotion] || d.area > found[d.emotion].area) found[d.emotion] = d;
+      }
+
+      const now = performance.now();
+      octx.clearRect(0, 0, w, h);
+
+      // Dibujar malla de vértices de cualquier silueta candidata en escena
+      if (Object.keys(found).length === 0 && blobs.length > 0) {
+        const biggest = blobs.reduce((a, b) => a.area > b.area ? a : b);
+        drawGeometry(biggest.vertices, [0, 245, 212]);
+        vertsEl.textContent = `Vértices detectados: ${biggest.vertices.length}`;
+      }
+
+      for (const k of Object.keys(EMO)) {
+        const d = found[k];
+        if (d) hits[k] = Math.min(6, hits[k] + 1);
+        else   hits[k] = Math.max(0, hits[k] - 2);
+
+        const on = hits[k] >= 4;
+        chips[k].classList.toggle('chip-on', on);
+
+        if (d && on) {
+          const p = pos[k] || (pos[k] = { x: d.cx, y: d.cy });
+          p.x += (d.cx - p.x) * 0.5; p.y += (d.cy - p.y) * 0.5;
+
+          // Dibujar polígono y vértices de la figura clasificada
+          drawGeometry(d.vertices, EMO[k].ripple);
+
+          let nx = p.x / w; if (mirrored) nx = 1 - nx;
+          const ny = p.y / h;
+          if (now - lastEmit[k] > 550) { window.emitWave(nx, ny, EMO[k].ripple); lastEmit[k] = now; }
+          statusEl.textContent = 'Forma: ' + EMO[k].label;
+          vertsEl.textContent = `Vértices: ${d.vertices.length}`;
+        } else if (!on) {
+          delete pos[k];
+        }
+      }
+
+      const active = Object.keys(EMO).some(k => hits[k] >= 4);
+      if (wasActive && !active) window.fadeWaves();
+      wasActive = active;
+      if (!active) {
+        statusEl.textContent = 'Muestra un modelo 3D a la cámara';
+        if (blobs.length === 0) vertsEl.textContent = 'Vértices: 0';
+      }
+    }
+    setTimeout(tick, 110);
+  }
+
+  btnStart.addEventListener('click', startCamera);
+  btnFlip.addEventListener('click', () => { facing = facing === 'environment' ? 'user' : 'environment'; startCamera(); });
+  document.getElementById('cam-toggle').addEventListener('click', () => preview.classList.toggle('opacity-0'));
+})();
+    </script>
+</body>
+</html>

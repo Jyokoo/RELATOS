@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Malla de Degradado Galáctica</title>
+    <!-- Script de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Thasadith -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Thasadith:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    
+    <style>
+        .thasadith-regular {
+            font-family: "Thasadith", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        /* Animaciones para las orbes de la malla */
+        @keyframes mesh-float-1 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(12vw, -15vh) scale(1.2); }
+            66% { transform: translate(-8vw, 10vh) scale(0.9); }
+        }
+
+        @keyframes mesh-float-2 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(-15vw, 12vh) scale(1.15); }
+            66% { transform: translate(10vw, -10vh) scale(0.85); }
+        }
+
+        @keyframes mesh-float-3 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(10vw, 18vh) scale(0.95); }
+            66% { transform: translate(-12vw, -12vh) scale(1.25); }
+        }
+
+        @keyframes mesh-float-4 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            50% { transform: translate(-18vw, -14vh) scale(1.3); }
+        }
+
+        @keyframes mesh-float-5 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            40% { transform: translate(15vw, -8vh) scale(1.1); }
+            80% { transform: translate(-10vw, 15vh) scale(0.9); }
+        }
+
+        /* 1. Titileo suave para constelaciones */
+        @keyframes pulse-twinkle {
+            0%, 100% { 
+                opacity: var(--base-opacity, 0.25); 
+            }
+            50% { 
+                opacity: calc(var(--base-opacity, 0.25) * 1.35); 
+            }
+        }
+
+        /* 2. Rotación continua perpetua */
+        @keyframes rotation-slow {
+            from {
+                transform: rotate(var(--initial-rotation, 0deg));
+            }
+            to {
+                transform: rotate(calc(var(--initial-rotation, 0deg) + 360deg));
+            }
+        }
+
+        /* 3. Titileo sutil con brillo/glow para las estrellas de fondo */
+        @keyframes star-glow-twinkle {
+            0%, 100% {
+                opacity: 0.15;
+                transform: scale(0.7);
+                box-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
+            }
+            50% {
+                opacity: 0.95;
+                transform: scale(1.25);
+                box-shadow: 0 0 6px rgba(255, 255, 255, 0.9), 0 0 10px rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        /* 4. Resplandor titilante sutil para el título central */
+        @keyframes title-glow-twinkle {
+            0%, 100% {
+                opacity: 0.78;
+                text-shadow: 
+                    0 0 12px rgba(255, 255, 255, 0.25),
+                    0 0 28px rgba(180, 210, 255, 0.15);
+            }
+            50% {
+                opacity: 0.98;
+                text-shadow: 
+                    0 0 18px rgba(255, 255, 255, 0.65),
+                    0 0 38px rgba(180, 210, 255, 0.38),
+                    0 0 60px rgba(247, 37, 133, 0.2);
+            }
+        }
+
+        .animate-mesh-1 { animation: mesh-float-1 22s ease-in-out infinite; }
+        .animate-mesh-2 { animation: mesh-float-2 28s ease-in-out infinite; }
+        .animate-mesh-3 { animation: mesh-float-3 25s ease-in-out infinite; }
+        .animate-mesh-4 { animation: mesh-float-4 32s ease-in-out infinite; }
+        .animate-mesh-5 { animation: mesh-float-5 20s ease-in-out infinite; }
+        
+        /* Clases de las constelaciones */
+        .constellation {
+            will-change: transform, opacity;
+        }
+
+        .rotate-slow-alegr {
+            animation: 
+                pulse-twinkle 12s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+                rotation-slow 200s linear infinite;
+        }
+
+        .rotate-slow-anxi {
+            animation: 
+                pulse-twinkle 14s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+                rotation-slow 240s linear infinite;
+        }
+
+        .rotate-slow-rag {
+            animation: 
+                pulse-twinkle 10s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+                rotation-slow 180s linear infinite;
+        }
+
+        /* Clase general para las mini estrellas con glow */
+        .star-point {
+            position: absolute;
+            background-color: #ffffff;
+            border-radius: 50%;
+            animation: star-glow-twinkle var(--duration, 4s) ease-in-out infinite;
+            animation-delay: var(--delay, 0s);
+            mix-blend-mode: color-dodge;
+        }
+
+        /* Clase del resplandor titilante del título */
+        .title-glow {
+            animation: title-glow-twinkle 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            will-change: opacity, text-shadow;
+        }
+
+        /* --- ESTADOS PARA LA SEGUNDA PANTALLA (MÁS AZULADA Y MUCHO MÁS OSCURA) --- */
+        .orb-transition {
+            transition: background 1.4s ease-in-out, opacity 1.4s ease-in-out;
+        }
+
+        .screen-2-active .orb-1 {
+            background: linear-gradient(to top right, #010413, #030b26, #071942) !important;
+            opacity: 0.75 !important;
+        }
+
+        .screen-2-active .orb-2 {
+            background: linear-gradient(to bottom right, #010617, #041d42, #093669) !important;
+            opacity: 0.70 !important;
+        }
+
+        .screen-2-active .orb-3 {
+            background: linear-gradient(to top, #02081f, #061b47, #0b2d6b) !important;
+            opacity: 0.65 !important;
+        }
+
+        .screen-2-active .orb-4 {
+            background: linear-gradient(to right, #02091c, #051636, #0b3b66) !important;
+            opacity: 0.60 !important;
+        }
+
+        .screen-2-active .orb-5 {
+            background: linear-gradient(to left, #01030d, #030d24, #08204a) !important;
+            opacity: 0.75 !important;
+        }
+    </style>
+</head>
+<body id="main-body" class="bg-[#03020d] min-h-screen w-screen overflow-hidden m-0 p-0 relative cursor-pointer transition-colors duration-1000">
+
+    <!-- Canvas de Malla de Degradado Galáctico -->
+    <div id="mesh-container" class="fixed inset-0 w-full h-full pointer-events-none overflow-hidden">
+        
+        <!-- Orbe 1 -->
+        <div class="orb-1 orb-transition absolute -top-[20%] -left-[10%] w-[65vw] h-[65vw] rounded-full bg-gradient-to-tr from-[#240046] via-[#3c096c] to-[#5a189a] opacity-80 blur-[100px] md:blur-[140px] animate-mesh-1"></div>
+
+        <!-- Orbe 2 -->
+        <div class="orb-2 orb-transition absolute top-[30%] -right-[15%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-br from-[#03045e] via-[#0077b6] to-[#00b4d8] opacity-75 blur-[110px] md:blur-[150px] animate-mesh-2"></div>
+
+        <!-- Orbe 3 -->
+        <div class="orb-3 orb-transition absolute -bottom-[20%] left-[15%] w-[70vw] h-[70vw] rounded-full bg-gradient-to-t from-[#7209b7] via-[#b5179e] to-[#f72585] opacity-70 blur-[120px] md:blur-[160px] animate-mesh-3"></div>
+
+        <!-- Orbe 4 -->
+        <div class="orb-4 orb-transition absolute top-[10%] left-[25%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-r from-[#4d194d] via-[#272640] to-[#00f5d4] opacity-65 blur-[90px] md:blur-[130px] animate-mesh-4"></div>
+
+        <!-- Orbe 5 -->
+        <div class="orb-5 orb-transition absolute bottom-[20%] right-[20%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-l from-[#0f1026] via-[#190028] to-[#6a040f] opacity-80 blur-[100px] md:blur-[140px] animate-mesh-5"></div>
+
+        <!-- Capa sutil de textura y oscurecimiento progresivo para pantalla 2 -->
+        <div id="dark-overlay" class="absolute inset-0 bg-[#03020d]/20 backdrop-blur-[10px] transition-colors duration-1000"></div>
+
+        <!-- CAPA DE ESTRELLAS/PUNTOS CON GLOW -->
+        <div id="stars-layer" class="absolute inset-0 z-0 pointer-events-none transition-opacity duration-1000">
+            <!-- Sector Superior Izquierdo -->
+            <span class="star-point w-0.5 h-0.5 top-[15%] left-[22%]" style="--duration: 3.5s; --delay: 0.2s;"></span>
+            <span class="star-point w-1 h-1 top-[28%] left-[12%]" style="--duration: 5.1s; --delay: 1.5s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[8%] left-[35%]" style="--duration: 4.0s; --delay: 2.8s;"></span>
+            <span class="star-point w-1 h-1 top-[38%] left-[5%]" style="--duration: 3.2s; --delay: 0.7s;"></span>
+
+            <!-- Sector Superior Derecho -->
+            <span class="star-point w-0.5 h-0.5 top-[10%] left-[65%]" style="--duration: 4.2s; --delay: 0.8s;"></span>
+            <span class="star-point w-1 h-1 top-[22%] left-[82%]" style="--duration: 5.8s; --delay: 2.1s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[12%] left-[85%]" style="--duration: 3.9s; --delay: 2.2s;"></span>
+            <span class="star-point w-1.5 h-1.5 top-[5%] left-[50%]" style="--duration: 6.5s; --delay: 1.2s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[30%] left-[92%]" style="--duration: 4.6s; --delay: 3.1s;"></span>
+
+            <!-- Sector Central -->
+            <span class="star-point w-1.5 h-1.5 top-[22%] left-[45%]" style="--duration: 4.0s; --delay: 2.5s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[35%] left-[32%]" style="--duration: 3.2s; --delay: 1.8s;"></span>
+            <span class="star-point w-1 h-1 top-[48%] left-[48%]" style="--duration: 5.2s; --delay: 0.4s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[52%] left-[62%]" style="--duration: 3.7s; --delay: 1.9s;"></span>
+            <span class="star-point w-1 h-1 top-[40%] left-[25%]" style="--duration: 4.8s; --delay: 2.9s;"></span>
+
+            <!-- Sector Inferior Izquierdo -->
+            <span class="star-point w-0.5 h-0.5 top-[75%] left-[18%]" style="--duration: 3.8s; --delay: 3.0s;"></span>
+            <span class="star-point w-1 h-1 top-[55%] left-[15%]" style="--duration: 6.2s; --delay: 3.4s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[88%] left-[8%]" style="--duration: 4.3s; --delay: 0.5s;"></span>
+            <span class="star-point w-1 h-1 top-[68%] left-[30%]" style="--duration: 5.0s; --delay: 1.6s;"></span>
+
+            <!-- Sector Inferior Derecho -->
+            <span class="star-point w-1 h-1 top-[85%] left-[45%]" style="--duration: 4.7s; --delay: 1.1s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[60%] left-[70%]" style="--duration: 5.5s; --delay: 0.4s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[80%] left-[88%]" style="--duration: 4.5s; --delay: 0.9s;"></span>
+            <span class="star-point w-1 h-1 top-[72%] left-[78%]" style="--duration: 3.6s; --delay: 2.7s;"></span>
+            <span class="star-point w-0.5 h-0.5 top-[92%] left-[60%]" style="--duration: 4.1s; --delay: 1.4s;"></span>
+            <span class="star-point w-1 h-1 top-[65%] left-[94%]" style="--duration: 5.7s; --delay: 0.1s;"></span>
+        </div>
+
+        <!-- CAPA DE CONSTELACIONES SVG -->
+        <div id="constellations-layer" class="absolute inset-0 z-10 pointer-events-none overflow-hidden transition-opacity duration-1000">
+            
+            <!-- 1. Alegr (Flor) - Esquina Superior Izquierda -->
+            <img 
+                src="img/constelaciones/alegr.svg" 
+                alt="Constelación Alegr" 
+                class="absolute -top-[15%] -left-[12%] w-[50vw] max-w-[620px] opacity-25 constellation rotate-slow-alegr mix-blend-color-dodge filter drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
+                style="--base-opacity: 0.25; --initial-rotation: 0deg; animation-delay: 0s, 0s;"
+            />
+
+            <!-- 2. Anxi (Orgánica) - Esquina Superior Derecha -->
+            <img 
+                src="img/constelaciones/anxi.svg" 
+                alt="Constelación Anxi" 
+                class="absolute -top-[16%] -right-[15%] w-[58vw] max-w-[750px] opacity-20 constellation rotate-slow-anxi mix-blend-color-dodge filter drop-shadow-[0_0_10px_rgba(255,255,255,0.25)]"
+                style="--base-opacity: 0.20; --initial-rotation: -12deg; animation-delay: 4s, 0s;"
+            />
+
+            <!-- 3. Rag (Explosión) - Margen Inferior al Centro -->
+            <img 
+                src="img/constelaciones/rag.svg" 
+                alt="Constelación Rag" 
+                class="absolute -bottom-[22%] left-[20%] md:left-[28%] w-[54vw] max-w-[700px] opacity-30 constellation rotate-slow-rag mix-blend-color-dodge filter drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]"
+                style="--base-opacity: 0.30; --initial-rotation: 6deg; animation-delay: 8s, 0s;"
+            />
+
+        </div>
+
+        <!-- CAPA DE TEXTO CENTRAL (TÍTULO PRINCIPAL CON GLOW TITILANTE) -->
+        <div id="title-layer" class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none px-6 text-center transition-opacity duration-1000">
+            <h1 class="thasadith-regular title-glow text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-wider leading-tight max-w-4xl">
+                Coloca tu figura seleccionada aquí
+            </h1>
+        </div>
+
+        <!-- BOTÓN VOLVER AL INICIO (Aparece en pantalla 2) -->
+        <button id="home-btn" class="thasadith-regular fixed bottom-12 left-1/2 -translate-x-1/2 z-30 px-7 py-3 rounded-full bg-white/5 hover:bg-white/15 text-white/80 hover:text-white border border-white/20 hover:border-white/40 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-700 tracking-wider shadow-[0_0_20px_rgba(255,255,255,0.15)]">
+            Volver al inicio
+        </button>
+    </div>
+
+    <script>
+        let isSecondScreen = false;
+
+        const body = document.getElementById('main-body');
+        const meshContainer = document.getElementById('mesh-container');
+        const darkOverlay = document.getElementById('dark-overlay');
+        const starsLayer = document.getElementById('stars-layer');
+        const constellationsLayer = document.getElementById('constellations-layer');
+        const titleLayer = document.getElementById('title-layer');
+        const homeBtn = document.getElementById('home-btn');
+
+        // Transición a la pantalla 2 al hacer clic en el fondo
+        body.addEventListener('click', (e) => {
+            if (isSecondScreen) return;
+            isSecondScreen = true;
+
+            body.classList.remove('bg-[#03020d]', 'cursor-pointer');
+            body.classList.add('bg-[#010208]', 'cursor-default');
+            meshContainer.classList.add('screen-2-active');
+
+            darkOverlay.classList.remove('bg-[#03020d]/20');
+            darkOverlay.classList.add('bg-[#01030a]/60');
+
+            starsLayer.classList.add('opacity-0');
+            constellationsLayer.classList.add('opacity-0');
+            titleLayer.classList.add('opacity-0');
+
+            // Mostrar el botón de volver al inicio
+            homeBtn.classList.remove('opacity-0', 'pointer-events-none');
+            homeBtn.classList.add('opacity-100', 'pointer-events-auto');
+        });
+
+        // Volver a la pantalla inicial al hacer clic en el botón
+        homeBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Evita que se dispare el evento del body
+            isSecondScreen = false;
+
+            body.classList.remove('bg-[#010208]', 'cursor-default');
+            body.classList.add('bg-[#03020d]', 'cursor-pointer');
+            meshContainer.classList.remove('screen-2-active');
+
+            darkOverlay.classList.remove('bg-[#01030a]/60');
+            darkOverlay.classList.add('bg-[#03020d]/20');
+
+            starsLayer.classList.remove('opacity-0');
+            constellationsLayer.classList.remove('opacity-0');
+            titleLayer.classList.remove('opacity-0');
+
+            // Ocultar el botón de volver al inicio
+            homeBtn.classList.remove('opacity-100', 'pointer-events-auto');
+            homeBtn.classList.add('opacity-0', 'pointer-events-none');
+        });
+    </script>
+
+</body>
+</html>
