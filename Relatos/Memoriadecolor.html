@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Malla Galáctica - Optimizada</title>
+    <title>Malla Galáctica - Detección Multi-Figura (1 a 6)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Thasadith:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     
+    <!-- MediaPipe Hands para bloquear reconocimiento si aparece una mano -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
     <style>
         * {
             margin: 0;
@@ -33,7 +36,7 @@
         }
 
         /* =====================================================================
-           1. ORBES CON GRADIENTE RADIAL (0% COSTO DE BLUR EN GPU)
+           1. ORBES CON GRADIENTE RADIAL
            ===================================================================== */
         .orb-base {
             position: absolute;
@@ -69,7 +72,6 @@
             animation: mesh-float-5 20s ease-in-out infinite;
         }
 
-        /* En Pantalla 2: fondo azulado oscuro estático/ligero para priorizar 60fps en ondas y cámara */
         .screen-2-active .orb-base {
             animation-play-state: paused !important;
             opacity: 0.25 !important;
@@ -139,7 +141,6 @@
         .rotate-slow-anxi { animation: pulse-twinkle 14s ease-in-out infinite, rotation-slow 240s linear infinite; }
         .rotate-slow-rag { animation: pulse-twinkle 10s ease-in-out infinite, rotation-slow 180s linear infinite; }
 
-        /* Pausar constelaciones y estrellas en Pantalla 2 para cero consumo en segundo plano */
         .paused-layer * {
             animation-play-state: paused !important;
         }
@@ -158,7 +159,7 @@
         }
 
         /* =====================================================================
-           2. ONDAS VECTORIALES OPTIMIZADAS (SIN FILTROS PESADOS POR FRAME)
+           2. ONDAS ORIGINALES CON MEZCLA DE COLORES CUANDO HAY MÁS DE UNA
            ===================================================================== */
         .panel-figuras {
             position: fixed;
@@ -206,45 +207,63 @@
             pointer-events: none;
         }
 
-        .ripple {
+        #ripples-stage {
             position: fixed;
-            width: 140px;
-            height: 140px;
+            inset: 0;
             pointer-events: none;
-            transform: translate3d(-50%, -50%, 0) scale(0.15);
-            transform-origin: center center;
-            animation: expandRipple 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            will-change: transform, opacity;
-            overflow: visible;
             z-index: 25;
-            contain: layout style;
+            overflow: hidden;
+            contain: strict;
+            isolation: isolate;
         }
 
-        .ripple-path {
+        .ripple {
+            position: absolute;
+            width: 145px;
+            height: 145px;
+            pointer-events: none;
+            transform: translate3d(-50%, -50%, 0) scale3d(0.18, 0.18, 1);
+            transform-origin: center center;
+            animation: expandRipple 3.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            will-change: transform, opacity;
+            overflow: visible;
+            mix-blend-mode: screen;
+            backface-visibility: hidden;
+        }
+
+        #ripples-stage.mezcla-activa .ripple {
+            mix-blend-mode: plus-lighter;
+        }
+
+        .ripple-glow {
             fill: none;
             stroke: currentColor;
-            stroke-miterlimit: 10;
-            stroke-width: 3.5px;
+            stroke-opacity: 0.35;
+            stroke-width: 10px;
+            stroke-linejoin: round;
             vector-effect: non-scaling-stroke;
         }
 
-        .miedo-path-sub {
-            fill: none;
+        .ripple-path {
+            fill: currentColor;
+            fill-opacity: 0.24;
             stroke: currentColor;
             stroke-miterlimit: 10;
-            stroke-width: 1.5px;
-            opacity: 0.45;
+            stroke-width: 3px;
             vector-effect: non-scaling-stroke;
         }
 
         @keyframes expandRipple {
             0% {
-                opacity: 0.95;
-                transform: translate3d(-50%, -50%, 0) scale(0.15) rotate(0deg);
+                opacity: 0.96;
+                transform: translate3d(-50%, -50%, 0) scale3d(0.18, 0.18, 1) rotate(0deg);
+            }
+            65% {
+                opacity: 0.65;
             }
             100% {
                 opacity: 0;
-                transform: translate3d(-50%, -50%, 0) scale(6.2) rotate(22deg);
+                transform: translate3d(-50%, -50%, 0) scale3d(8.2, 8.2, 1) rotate(22deg);
             }
         }
 
@@ -256,7 +275,7 @@
             top: 24px;
             right: 24px;
             z-index: 100;
-            width: 215px;
+            width: 245px;
             font-family: system-ui, -apple-system, sans-serif;
             color: #fff;
             transition: opacity 0.6s ease, transform 0.6s ease;
@@ -267,11 +286,11 @@
             transform: translateY(-16px);
         }
         #cam-ui .glass {
-            background: rgba(10, 8, 30, 0.78);
-            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(10, 8, 30, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 14px;
             padding: 10px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
         }
         #cam-ui button {
             width: 100%;
@@ -312,9 +331,14 @@
             gap: 6px;
             font-size: 11px;
             opacity: 0.45;
-            transition: opacity 0.15s, background 0.15s;
-            padding: 2px 4px;
+            transition: opacity 0.12s, background 0.12s;
+            padding: 3px 5px;
             border-radius: 6px;
+            cursor: pointer;
+        }
+        .chip:hover {
+            opacity: 0.9;
+            background: rgba(255, 255, 255, 0.1);
         }
         .chip i {
             width: 9px;
@@ -324,7 +348,7 @@
         }
         .chip-on {
             opacity: 1;
-            background: rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.24);
             font-weight: 600;
         }
     </style>
@@ -375,13 +399,22 @@
             <img src="img/constelaciones/rag.svg" alt="Constelación Rag" class="absolute -bottom-[22%] left-[20%] md:left-[28%] w-[54vw] max-w-[700px] opacity-30 constellation rotate-slow-rag mix-blend-screen" style="--base-opacity: 0.30; --initial-rotation: 6deg;" />
         </div>
 
-        <!-- CAPA DE TEXTO CENTRAL -->
-        <div id="title-layer" class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none px-6 text-center transition-opacity duration-700">
+        <!-- CAPA DE TEXTO CENTRAL (PANTALLA 1) -->
+        <div id="title-layer" class="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none px-6 text-center transition-opacity duration-700">
             <h1 class="thasadith-regular title-glow text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-wider leading-tight max-w-4xl">
-                Coloca tu figura seleccionada aquí
+                Coloca tus figuras aquí (1 a 6)
             </h1>
+            <p id="start-cam-hint" class="thasadith-regular text-white/60 text-sm sm:text-base mt-6 tracking-widest uppercase">
+                Iniciando detección por cámara...
+            </p>
+            <button id="start-cam-initial" class="hidden pointer-events-auto mt-4 px-5 py-2 rounded-full bg-white/15 hover:bg-white/25 text-white text-sm border border-white/30 backdrop-blur-md transition">
+                Activar cámara para detectar figuras
+            </button>
         </div>
     </div>
+
+    <!-- ESCENARIO DE ONDAS ORIGINALES CON MEZCLA DE COLORES -->
+    <div id="ripples-stage"></div>
 
     <!-- BOTÓN VOLVER AL INICIO (Pantalla 2) -->
     <button id="home-btn" class="thasadith-regular fixed top-6 left-6 z-50 px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white border border-white/25 opacity-0 pointer-events-none transition-opacity duration-500 tracking-wider">
@@ -399,15 +432,15 @@
                     <canvas id="cam-overlay"></canvas>
                 </div>
             </div>
-            <p id="cam-status" style="font-size:11px;margin:8px 0 2px;opacity:.85">Activa la cámara para detectar geometría 3D</p>
-            <p id="cam-verts" style="font-size:10px;margin:0 0 6px;color:#00f5d4;font-family:monospace">Vértices: --</p>
+            <p id="cam-status" style="font-size:11px;margin:8px 0 2px;opacity:.92">Activa la cámara para detectar figuras</p>
+            <p id="cam-verts" style="font-size:10px;margin:0 0 6px;color:#00f5d4;font-family:monospace">Vértices: -- · Figuras: 0 / 6</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px">
-                <div class="chip" data-emo="alegria"><i style="background:rgb(255,205,25)"></i>Alegría</div>
-                <div class="chip" data-emo="ansiedad"><i style="background:rgb(255,105,30)"></i>Ansiedad</div>
-                <div class="chip" data-emo="asco"><i style="background:rgb(140,210,35)"></i>Asco</div>
-                <div class="chip" data-emo="ira"><i style="background:rgb(235,35,60)"></i>Ira</div>
-                <div class="chip" data-emo="miedo"><i style="background:rgb(165,130,235)"></i>Miedo</div>
-                <div class="chip" data-emo="tristeza"><i style="background:rgb(35,120,255)"></i>Tristeza</div>
+                <div class="chip" data-emo="alegria" title="Clic para calibrar vértices de Alegría"><i style="background:rgb(255,205,25)"></i>Alegría</div>
+                <div class="chip" data-emo="ansiedad" title="Clic para calibrar vértices de Ansiedad"><i style="background:rgb(255,105,30)"></i>Ansiedad</div>
+                <div class="chip" data-emo="asco" title="Clic para calibrar vértices de Asco"><i style="background:rgb(140,210,35)"></i>Asco</div>
+                <div class="chip" data-emo="ira" title="Clic para calibrar vértices de Ira"><i style="background:rgb(255,10,20)"></i>Ira</div>
+                <div class="chip" data-emo="miedo" title="Clic para calibrar vértices de Miedo"><i style="background:rgb(165,130,235)"></i>Miedo</div>
+                <div class="chip" data-emo="tristeza" title="Clic para calibrar vértices de Tristeza"><i style="background:rgb(35,120,255)"></i>Tristeza</div>
             </div>
             <button id="cam-toggle" style="margin-top:8px;font-size:11px">Mostrar / ocultar vista</button>
         </div>
@@ -418,9 +451,10 @@
 
     <script>
         // =========================================================================
-        // 1. NAVEGACIÓN ENTRE PANTALLAS (Pausando capas ocultas para 60fps)
+        // 1. NAVEGACIÓN ENTRE PANTALLAS (POR DETECCIÓN DE CÁMARA O CLIC)
         // =========================================================================
         let isSecondScreen = false;
+        let autoSwitchCooldownUntil = 0;
 
         const body = document.getElementById('main-body');
         const meshContainer = document.getElementById('mesh-container');
@@ -430,8 +464,9 @@
         const homeBtn = document.getElementById('home-btn');
         const panelFiguras = document.getElementById('panelFiguras');
         const camUi = document.getElementById('cam-ui');
+        const ripplesStage = document.getElementById('ripples-stage');
 
-        body.addEventListener('click', () => {
+        function entrarSegundaPantalla() {
             if (isSecondScreen) return;
             isSecondScreen = true;
 
@@ -447,13 +482,18 @@
             homeBtn.classList.add('opacity-100', 'pointer-events-auto');
             panelFiguras.classList.remove('panel-oculto');
             camUi.classList.remove('cam-oculto');
-        });
+        }
 
-        homeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
+        function volverPantallaInicio() {
+            if (!isSecondScreen) return;
             isSecondScreen = false;
+            autoSwitchCooldownUntil = performance.now() + 1500;
 
+            seleccionManualKey = null;
             seleccionarEmocion(null);
+            ripplesStage.innerHTML = '';
+            ripplesStage.classList.remove('mezcla-activa');
+            activeRipplesList.length = 0;
 
             body.classList.remove('cursor-default');
             body.classList.add('cursor-pointer');
@@ -467,32 +507,47 @@
             homeBtn.classList.add('opacity-0', 'pointer-events-none');
             panelFiguras.classList.add('panel-oculto');
             camUi.classList.add('cam-oculto');
+        }
+
+        body.addEventListener('click', (e) => {
+            if (isSecondScreen || e.target.closest('#start-cam-initial')) return;
+            entrarSegundaPantalla();
+        });
+
+        homeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            volverPantallaInicio();
         });
 
         // =========================================================================
-        // 2. CONFIGURACIÓN DE EMOCIONES Y ONDAS VECTORIALES (SVG OPTIMIZADO)
+        // 2. CONFIGURACIÓN DE EMOCIONES Y ONDAS VECTORIALES ORIGINALES
         // =========================================================================
+        const TRISTEZA_D = "M183.78,276.68c-9.72,0-19.76-5.61-30-16.76-14.53-15.84-33.59-26.02-53.68-28.68-18.65-2.47-45.21-8.38-65.79-22.53C10.98,192.66,0,169.6,1.67,140.17c1.38-24.37,10.86-40.48,28.96-49.26,15.5-7.51,34.56-8.37,51.38-9.13,8.63-.39,16.77-.76,23.16-2.03,9.02-1.79,18.74-6.19,28.89-13.06,10.66-7.22,18.38-17.39,26.56-28.15,3.45-4.54,7.02-9.24,10.8-13.64,13.09-15.26,27.36-23.13,42.4-23.4.27,0,.53,0,.8,0,21.54,0,40.27,15.39,52.25,28.4,8.52,9.25,19.2,16,30.87,19.52,13.87,4.18,26.91,10.7,38.76,19.38,18.24,13.37,29.84,35.67,31.02,59.65.36,7.35.23,14.44-.4,21.09-1.87,19.87-10.84,37.85-25.26,50.63-12.9,11.44-28.86,17.57-45.45,17.57-1.9,0-3.8-.08-5.71-.24-48.9-4.14-62.68,16.57-74.84,34.84-6.14,9.22-11.94,17.94-21.65,22.12-3.43,1.48-6.91,2.21-10.43,2.22Z";
+        const MIEDO_D = "M161.96,290.05l-5.81-36.7-1.03,9.65-3.48-5.66-1.73,5.06-5.09,23.38-2.86-32-.35-.26-4.17,18.78-4.12,3.5-3.37.46-5.45,3.54-.15-14.63-4.36,6.92-.49-16.14-.34-1.63-11.78,29.13,3.48-28.26.22-3.55-14.78,31.57,6.86-31.77.75-4.76-12.92,21.16,10.16-31.76-.05-.41-16.8,26.11-.82-9.84,5.25-14.69,1.16-6.49-.44-1.3-4.92,1.99.27-3.43-10.07,9.7-5.29.73-3.06-3.25,1.89-5.84h-1.47s-19.91,14.14-19.91,14.14l13.14-17.89-3.32,1.52-13.49,7.46-2.16-4.53-1.21-3.57.45-5.04,3.4-4.56-15.89,6.97,13.35-14.56,17.19-13.93v-.12s-27.25,11.83-27.25,11.83l6.71-9.55,5.62-4.23-17.2,5.68.45-6.12,3.71-3.45-13.14,1.23,16.05-10.22,7.81-5.03-.32-.47-25.26,2.12,25.54-9.36-3.43-.14-19.66-.08,6.62-4.37-10.84-1.06,1-4.68.12-4.06,13.05-4.11,7.86-1.54-21.43-2.24,15.97-4.69,1.6-1.16-4.53-2.18-24.46-6.61,20.27-1.61-6.88-4.45,18.99,1.07-21.17-6,6.22-4.4,12.02.24-.48-.96-22.44-10.97,17.86,1.12-.88-3.84,18.52,4.21-.64-.92-5.95-5.6-8.68-9.62,19.67,7.01-3.55-3.01-21.72-17.33,23.47,9.5-2.62-5.1,15.93,7.35-1.06-2.31,2.08-.97-12.42-12.76-13.3-17.49,22.36,15.68-14.33-15.95,13.97,6.66,1.2-2.6,6.52,1.42,7.31,5.78-8.34-13.25,9.47,6.54-8.23-16.06,14.03,14.58-16.16-27.1,14.22,14.21-5.13-11.84,6.29-.43,8.52,11.17-10.59-25.55,18.32,25.54.96-1.22,1.81-.94-3.33-15.34,5.73-.47,7.63,14.92-2.26-11.29,3.81.69.67-6.7,2.75-9.37,7,16,1.38-6.68,4.28,9.24.16-9.25,2.46-19.05,6.82,30.51.5-4.18,2.22-26.6,5.3,20.79,2.97-3.75,2.88,15.98.68-1.08,5.36-25.66,1.55,20.51,4.94-26.31,2.43,24.58.83,6,2.09-4.18,4.23-6.25,3.66-3.26,7.36-9.71-1.47,17.64,4.15-6.85,1.9,6.39,5.34-3.67-4.18,19.36,1.56-1.9,7.95-11.72,9.45-8.92-7.01,23.5,1.56.8,2.42,1.66,2.35,2.91-.59,3.15,14.34-16.8-10.92,24.4-.03.48,22.68-26.57-1.46,9.79,3.63.3-.5,6.94-4.72,8.04,8.73-6.07-1.81,6.28,14.69-9.11-14.67,19.5-.45,2.14,3.4-.72,15.18-6.59-12.82,15.06-2.43,3.37,4.84-1.66,29.7-14.58-17.56,15.95h2.04s16.81-3.85,16.81-3.85l-15.48,11.85,7.17-.96-4.03,5.23,12.07-1.15-17.22,11.05.19.42,21.58-4.52.81,2.6-20.37,8.5,22.74-4.07-16.94,7.91,27.15-2.89-30.14,9.85,6.79-.07,16.14,2.68-22.52,5.32,17.62-.35.3,2.7-13.46,2.73,28.46,1.05-24.86,5.7.44,3.02-12.9,1.52,15.15,2.92-12.23,2.27,15.71,4.53-22.94,1.25v.24s15.67,5.22,15.67,5.22l3.12,5.78-7.46.11,18.09,6.68-.59,5.89-28.35-5.94,2.82,1.67,21.05,10.63,1.68,6.87-26.17-8.35,13.67,8.2-15.99-2.29-.69.22,19.39,13.25-1.31,2.38-22.98-9.98.56,1.13,1.45,3.88,19.75,17.59-13.9-3.42-3.88-1.15,15.23,17.04-26.16-17.52,12.9,14.53-17.65-11.43,4.77,6.89-6.16.9-8.21-4.38-1.9-.94,8.39,13.11-4.52-.07,1.92,7.25-4.65-.61-.25,6.77-14.35-16.36.2,1.3,7.23,18.03-7.23-2.94-3.75-.18-4.18-5.12,4.64,14.03-5.17-.23-3.42.78-2.28-1.86,5.07,25.92-14.09-31.74,5.08,23.17-8.05-14.84,1.48,13.39-3.86-.39-2.09,7.93-5.99-6.02-5.38-12.82-2.13-5.56-.34,10.97-2.83,24.03Z";
+        const ANSIEDAD_D = "M133.59,1.83c23.04-2.22,39.57,6.75,51.38,26.11,4.75,7.79,7.58,16.24,14.95,22.29,8.56,7.02,15.93,5.59,25.68,8.26,5.86,1.61,11.18,4.91,16.99,6.58,20.13,5.8,40.11-7.66,60.74,6.66,19.16,13.29,16.63,34.67,6.08,52.66-7.92,13.5-20.16,33.5-31.48,43.93-19.96,18.38-49.45,15.22-58.21,45.95-4.67,16.39,3.01,34.32-13.95,45.44-24.19,15.85-69.05-2.2-82.82-25.5-10.19-17.24-5.15-48.82-36.03-43.86-15.84,2.55-30.4,9.75-45.14-2.71-21.4-18.08.51-45.86-20.98-64.8-9.1-8.03-15.71-12.31-18.38-25.45-6.07-29.78,19.29-50.52,45.88-55.97,12.9-2.64,16.17-1.43,27.18-10.05,17.65-13.81,34.52-27.27,58.13-29.54Z";
+        const ALEGRIA_D = "M140,244.39c-7.65,0-15.69-4.33-17.83-14.81l-2.18-10.63-2.72,10.51c-3.08,11.93-13.56,15.32-21.98,13.42-8.43-1.9-16.43-9.46-14.1-21.56l2.06-10.66-6.53,8.67c-7.41,9.84-18.39,8.97-25.45,3.99-7.06-4.98-11.56-15.02-4.78-25.31l5.98-9.06-9.35,5.51c-10.62,6.26-20.42,1.25-25.04-6.06-4.61-7.3-4.93-18.31,5.27-25.21l8.99-6.08-10.75,1.51c-12.2,1.72-19.34-6.66-20.81-15.18-1.47-8.51,2.45-18.8,14.52-21.27l10.63-2.18-10.51-2.72C3.51,114.19.12,103.72,2.02,95.29c1.9-8.43,9.46-16.43,21.56-14.1l10.66,2.06-8.67-6.53c-9.84-7.41-8.97-18.39-3.99-25.45,4.98-7.06,15.03-11.56,25.31-4.77l9.06,5.98-5.51-9.35c-6.26-10.62-1.25-20.42,6.06-25.04,7.3-4.61,18.31-4.93,25.21,5.27l6.08,8.99-1.51-10.75c-1.72-12.2,6.66-19.34,15.18-20.81,8.51-1.47,18.8,2.45,21.27,14.52l2.18,10.63,2.72-10.51c3.08-11.93,13.56-15.32,21.98-13.42,8.43,1.9,16.43,9.46,14.1,21.56l-2.06,10.66,6.53-8.67c7.41-9.84,18.39-8.97,25.45-3.99,7.06,4.98,11.56,15.02,4.78,25.31l-5.98,9.06,9.35-5.51c10.62-6.26,20.42-1.25,25.04,6.06,4.62,7.3,4.93,18.31-5.27,25.21l-8.99,6.08,10.75-1.51c12.21-1.72,19.34,6.66,20.81,15.18s-2.45,18.8-14.52,21.27l-10.63,2.18,10.51,2.72c11.93,3.08,15.32,13.56,13.42,21.98-1.9,8.43-9.46,16.43-21.56,14.1l-10.66-2.06,8.67,6.53c9.84,7.42,8.97,18.39,3.99,25.45-4.98,7.06-15.02,11.56-25.31,4.77l-9.06-5.98,5.51,9.35c6.26,10.62,1.25,20.42-6.06,25.04-7.3,4.62-18.31,4.93-25.21-5.27l-6.08-8.99,1.51,10.75c1.72,12.2-6.66,19.34-15.17,20.81-1.12.19-2.28.29-3.44.29Z";
+        const IRA_POINTS = "194.65 99.47 280.11 33.43 238.93 124.4 321.73 164.91 231.01 220.25 250.78 278.85 179.56 227.87 29.35 313.7 95.34 200.75 4.17 172.89 104.43 126.08 82.13 3.86 194.65 99.47";
+
         const EMOCIONES = {
             tristeza: {
                 nombre: 'Tristeza',
                 figuraSrc: 'figuras/tristeza.svg',
                 rgb: [35, 120, 255],
                 colorConfig: { hueMin: 205, hueMax: 265, satMin: 80, satMax: 95, lightMin: 52, lightMax: 74 },
-                ondaSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 369.21 278.18" class="ripple"><path class="ripple-path" d="M183.78,276.68c-9.72,0-19.76-5.61-30-16.76-14.53-15.84-33.59-26.02-53.68-28.68-18.65-2.47-45.21-8.38-65.79-22.53C10.98,192.66,0,169.6,1.67,140.17c1.38-24.37,10.86-40.48,28.96-49.26,15.5-7.51,34.56-8.37,51.38-9.13,8.63-.39,16.77-.76,23.16-2.03,9.02-1.79,18.74-6.19,28.89-13.06,10.66-7.22,18.38-17.39,26.56-28.15,3.45-4.54,7.02-9.24,10.8-13.64,13.09-15.26,27.36-23.13,42.4-23.4.27,0,.53,0,.8,0,21.54,0,40.27,15.39,52.25,28.4,8.52,9.25,19.2,16,30.87,19.52,13.87,4.18,26.91,10.7,38.76,19.38,18.24,13.37,29.84,35.67,31.02,59.65.36,7.35.23,14.44-.4,21.09-1.87,19.87-10.84,37.85-25.26,50.63-12.9,11.44-28.86,17.57-45.45,17.57-1.9,0-3.8-.08-5.71-.24-48.9-4.14-62.68,16.57-74.84,34.84-6.14,9.22-11.94,17.94-21.65,22.12-3.43,1.48-6.91,2.21-10.43,2.22Z"/></svg>`
+                ondaSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 369.21 278.18" class="ripple"><path class="ripple-glow" d="${TRISTEZA_D}"/><path class="ripple-path" d="${TRISTEZA_D}"/></svg>`
             },
             miedo: {
                 nombre: 'Miedo',
                 figuraSrc: 'figuras/miedo.svg',
                 rgb: [165, 130, 235],
                 colorConfig: { hueMin: 268, hueMax: 305, satMin: 72, satMax: 95, lightMin: 48, lightMax: 74 },
-                // Path único limpio (eliminada la copia duplicada que doblaba los nodos SVG)
-                ondaSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 299.21 293.71" class="ripple"><path class="ripple-path" d="M161.96,290.05l-5.81-36.7-1.03,9.65-3.48-5.66-1.73,5.06-5.09,23.38-2.86-32-.35-.26-4.17,18.78-4.12,3.5-3.37.46-5.45,3.54-.15-14.63-4.36,6.92-.49-16.14-.34-1.63-11.78,29.13,3.48-28.26.22-3.55-14.78,31.57,6.86-31.77.75-4.76-12.92,21.16,10.16-31.76-.05-.41-16.8,26.11-.82-9.84,5.25-14.69,1.16-6.49-.44-1.3-4.92,1.99.27-3.43-10.07,9.7-5.29.73-3.06-3.25,1.89-5.84h-1.47s-19.91,14.14-19.91,14.14l13.14-17.89-3.32,1.52-13.49,7.46-2.16-4.53-1.21-3.57.45-5.04,3.4-4.56-15.89,6.97,13.35-14.56,17.19-13.93v-.12s-27.25,11.83-27.25,11.83l6.71-9.55,5.62-4.23-17.2,5.68.45-6.12,3.71-3.45-13.14,1.23,16.05-10.22,7.81-5.03-.32-.47-25.26,2.12,25.54-9.36-3.43-.14-19.66-.08,6.62-4.37-10.84-1.06,1-4.68.12-4.06,13.05-4.11,7.86-1.54-21.43-2.24,15.97-4.69,1.6-1.16-4.53-2.18-24.46-6.61,20.27-1.61-6.88-4.45,18.99,1.07-21.17-6,6.22-4.4,12.02.24-.48-.96-22.44-10.97,17.86,1.12-.88-3.84,18.52,4.21-.64-.92-5.95-5.6-8.68-9.62,19.67,7.01-3.55-3.01-21.72-17.33,23.47,9.5-2.62-5.1,15.93,7.35-1.06-2.31,2.08-.97-12.42-12.76-13.3-17.49,22.36,15.68-14.33-15.95,13.97,6.66,1.2-2.6,6.52,1.42,7.31,5.78-8.34-13.25,9.47,6.54-8.23-16.06,14.03,14.58-16.16-27.1,14.22,14.21-5.13-11.84,6.29-.43,8.52,11.17-10.59-25.55,18.32,25.54.96-1.22,1.81-.94-3.33-15.34,5.73-.47,7.63,14.92-2.26-11.29,3.81.69.67-6.7,2.75-9.37,7,16,1.38-6.68,4.28,9.24.16-9.25,2.46-19.05,6.82,30.51.5-4.18,2.22-26.6,5.3,20.79,2.97-3.75,2.88,15.98.68-1.08,5.36-25.66,1.55,20.51,4.94-26.31,2.43,24.58.83,6,2.09-4.18,4.23-6.25,3.66-3.26,7.36-9.71-1.47,17.64,4.15-6.85,1.9,6.39,5.34-3.67-4.18,19.36,1.56-1.9,7.95-11.72,9.45-8.92-7.01,23.5,1.56.8,2.42,1.66,2.35,2.91-.59,3.15,14.34-16.8-10.92,24.4-.03.48,22.68-26.57-1.46,9.79,3.63.3-.5,6.94-4.72,8.04,8.73-6.07-1.81,6.28,14.69-9.11-14.67,19.5-.45,2.14,3.4-.72,15.18-6.59-12.82,15.06-2.43,3.37,4.84-1.66,29.7-14.58-17.56,15.95h2.04s16.81-3.85,16.81-3.85l-15.48,11.85,7.17-.96-4.03,5.23,12.07-1.15-17.22,11.05.19.42,21.58-4.52.81,2.6-20.37,8.5,22.74-4.07-16.94,7.91,27.15-2.89-30.14,9.85,6.79-.07,16.14,2.68-22.52,5.32,17.62-.35.3,2.7-13.46,2.73,28.46,1.05-24.86,5.7.44,3.02-12.9,1.52,15.15,2.92-12.23,2.27,15.71,4.53-22.94,1.25v.24s15.67,5.22,15.67,5.22l3.12,5.78-7.46.11,18.09,6.68-.59,5.89-28.35-5.94,2.82,1.67,21.05,10.63,1.68,6.87-26.17-8.35,13.67,8.2-15.99-2.29-.69.22,19.39,13.25-1.31,2.38-22.98-9.98.56,1.13,1.45,3.88,19.75,17.59-13.9-3.42-3.88-1.15,15.23,17.04-26.16-17.52,12.9,14.53-17.65-11.43,4.77,6.89-6.16.9-8.21-4.38-1.9-.94,8.39,13.11-4.52-.07,1.92,7.25-4.65-.61-.25,6.77-14.35-16.36.2,1.3,7.23,18.03-7.23-2.94-3.75-.18-4.18-5.12,4.64,14.03-5.17-.23-3.42.78-2.28-1.86,5.07,25.92-14.09-31.74,5.08,23.17-8.05-14.84,1.48,13.39-3.86-.39-2.09,7.93-5.99-6.02-5.38-12.82-2.13-5.56-.34,10.97-2.83,24.03Z"/></svg>`
+                ondaSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 299.21 293.71" class="ripple"><path class="ripple-path" d="${MIEDO_D}"/></svg>`
             },
             ira: {
                 nombre: 'Ira',
                 figuraSrc: 'figuras/ira.svg',
-                rgb: [235, 35, 60],
-                colorConfig: { hueMin: 0, hueMax: 15, satMin: 90, satMax: 100, lightMin: 42, lightMax: 62 },
+                rgb: [255, 10, 20],
+                colorConfig: { hueMin: 356, hueMax: 3, satMin: 98, satMax: 100, lightMin: 38, lightMax: 48 },
                 esEstelaIra: true
             },
             ansiedad: {
@@ -500,7 +555,7 @@
                 figuraSrc: 'figuras/ansiedad.svg',
                 rgb: [255, 105, 30],
                 colorConfig: { hueMin: 18, hueMax: 28, satMin: 95, satMax: 100, lightMin: 48, lightMax: 62 },
-                ondaSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 319.05 267.2" class="ripple"><path class="ripple-path" d="M133.59,1.83c23.04-2.22,39.57,6.75,51.38,26.11,4.75,7.79,7.58,16.24,14.95,22.29,8.56,7.02,15.93,5.59,25.68,8.26,5.86,1.61,11.18,4.91,16.99,6.58,20.13,5.8,40.11-7.66,60.74,6.66,19.16,13.29,16.63,34.67,6.08,52.66-7.92,13.5-20.16,33.5-31.48,43.93-19.96,18.38-49.45,15.22-58.21,45.95-4.67,16.39,3.01,34.32-13.95,45.44-24.19,15.85-69.05-2.2-82.82-25.5-10.19-17.24-5.15-48.82-36.03-43.86-15.84,2.55-30.4,9.75-45.14-2.71-21.4-18.08.51-45.86-20.98-64.8-9.1-8.03-15.71-12.31-18.38-25.45-6.07-29.78,19.29-50.52,45.88-55.97,12.9-2.64,16.17-1.43,27.18-10.05,17.65-13.81,34.52-27.27,58.13-29.54Z"/></svg>`
+                ondaSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 319.05 267.2" class="ripple"><path class="ripple-glow" d="${ANSIEDAD_D}"/><path class="ripple-path" d="${ANSIEDAD_D}"/></svg>`
             },
             alegria: {
                 nombre: 'Alegría',
@@ -519,15 +574,32 @@
         };
 
         // =========================================================================
-        // 3. GENERACIÓN DE BOTONES Y CONTROL DE LÍMITE DE ONDAS (POOLING)
+        // 3. GENERACIÓN DE BOTONES Y MEZCLA DE COLORES CUANDO HAY > 1 ONDA
         // =========================================================================
         let emocionActivaKey = null;
+        let seleccionManualKey = null;
         let isMouseDown = false;
         let lastSpawnTime = 0;
-        const throttleDelay = 95; // Más fluido al arrastrar
+        const throttleDelay = 120;
         let interactionStep = 0;
-        let activeRipplesCount = 0;
-        const MAX_ACTIVE_RIPPLES = 28; // Evita saturación de nodos DOM y GPU
+
+        const activeRipplesList = [];
+        // Aumentado a 60 para soportar hasta 6 figuras emitiendo ondas simultáneas sin saturación
+        const MAX_ACTIVE_RIPPLES = 60;
+
+        function updateRippleBlendState() {
+            ripplesStage.classList.toggle('mezcla-activa', activeRipplesList.length > 1);
+        }
+
+        function mixHslColors(hslA, hslB, weightB = 0.35) {
+            let dH = hslB.h - hslA.h;
+            if (dH > 180) dH -= 360;
+            if (dH < -180) dH += 360;
+            const h = (hslA.h + dH * weightB + 360) % 360;
+            const s = Math.min(100, Math.round(hslA.s * (1 - weightB) + hslB.s * weightB));
+            const l = Math.min(72, Math.round(hslA.l * (1 - weightB) + hslB.l * weightB));
+            return { h: Math.round(h), s, l };
+        }
 
         const fragment = document.createDocumentFragment();
         Object.entries(EMOCIONES).forEach(([key, data]) => {
@@ -546,7 +618,8 @@
 
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                seleccionarEmocion(emocionActivaKey === key ? null : key);
+                seleccionManualKey = (seleccionManualKey === key) ? null : key;
+                seleccionarEmocion(seleccionManualKey);
             });
         });
         panelFiguras.appendChild(fragment);
@@ -559,102 +632,116 @@
             body.classList.toggle('modo-activo', emocionActivaKey !== null);
         }
 
-        function getDynamicColor(config) {
+        function getDynamicHsl(config) {
             interactionStep += 0.15;
-            const centerHue = (config.hueMin + config.hueMax) * 0.5;
-            const amplitude = (config.hueMax - config.hueMin) * 0.5;
+            const span = ((config.hueMax - config.hueMin) + 360) % 360;
+            const centerHue = (config.hueMin + span * 0.5) % 360;
+            const amplitude = span * 0.5;
             const baseHue = centerHue + Math.sin(interactionStep) * (amplitude * 0.85);
-            const hue = Math.round(baseHue + (Math.random() - 0.5) * 5);
-            const saturation = Math.round(config.satMin + Math.random() * (config.satMax - config.satMin));
-            const lightness = Math.round(config.lightMin + Math.random() * (config.lightMax - config.lightMin));
-            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            const h = (Math.round(baseHue + (Math.random() - 0.5) * 3) + 360) % 360;
+            const s = Math.round(config.satMin + Math.random() * (config.satMax - config.satMin));
+            const l = Math.round(config.lightMin + Math.random() * (config.lightMax - config.lightMin));
+            return { h, s, l };
+        }
+
+        function spawnSingleRipple(x, y, activeKey) {
+            if (!isSecondScreen || activeRipplesList.length >= MAX_ACTIVE_RIPPLES) return;
+            const emocion = EMOCIONES[activeKey];
+            if (!emocion) return;
+
+            const temp = document.createElement('div');
+            
+            if (emocion.esParticulaEstela) {
+                const bubbleCount = 4 + Math.floor(Math.random() * 3);
+                let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" class="ripple">`;
+                for (let b = 0; b < bubbleCount; b++) {
+                    const cx = 110 + (Math.random() - 0.5) * 90;
+                    const cy = 110 + (Math.random() - 0.5) * 90;
+                    const r = 8 + Math.random() * 24;
+                    const strokeWidth = 1.5 + Math.random() * 2.5;
+                    svgContent += `<circle cx="${cx}" cy="${cy}" r="${r}" class="ripple-path" style="stroke-width:${strokeWidth}px" />`;
+                }
+                svgContent += `</svg>`;
+                temp.innerHTML = svgContent;
+            } 
+            else if (emocion.esEstelaAlegria) {
+                const rot = Math.round(Math.random() * 360);
+                const scaleInner = (0.8 + Math.random() * 0.4).toFixed(2);
+                temp.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 244.89 244.89" class="ripple">
+                        <g transform="rotate(${rot} 122.44 122.44) scale(${scaleInner})">
+                            <path class="ripple-glow" d="${ALEGRIA_D}"/>
+                            <path class="ripple-path" d="${ALEGRIA_D}"/>
+                        </g>
+                    </svg>
+                `;
+            } 
+            else if (emocion.esEstelaIra) {
+                const rot = Math.round(Math.random() * 360);
+                const scaleInner = (0.6 + Math.random() * 0.8).toFixed(2);
+                temp.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 324.84 317.78" class="ripple">
+                        <g transform="rotate(${rot} 162.42 158.89) scale(${scaleInner})">
+                            <polygon class="ripple-glow" points="${IRA_POINTS}"/>
+                            <polygon class="ripple-path" points="${IRA_POINTS}"/>
+                        </g>
+                    </svg>
+                `;
+            } 
+            else {
+                temp.innerHTML = emocion.ondaSvg;
+            }
+
+            const ripple = temp.firstElementChild;
+            if (!ripple) return;
+
+            let offsetX = 0;
+            let offsetY = 0;
+            if (activeKey === 'asco') {
+                offsetX = (Math.random() - 0.5) * 35;
+                offsetY = (Math.random() - 0.5) * 35;
+            } else if (activeKey === 'alegria' || activeKey === 'ira') {
+                offsetX = (Math.random() - 0.5) * 45;
+                offsetY = (Math.random() - 0.5) * 45;
+            }
+
+            let finalHsl = getDynamicHsl(emocion.colorConfig);
+
+            if (activeRipplesList.length >= 1) {
+                const prev = activeRipplesList[activeRipplesList.length - 1];
+                if (prev.key !== activeKey) {
+                    finalHsl = mixHslColors(finalHsl, prev.hsl, 0.25);
+                }
+            }
+
+            ripple.style.left = `${x + offsetX}px`;
+            ripple.style.top = `${y + offsetY}px`;
+            ripple.style.color = `hsl(${finalHsl.h}, ${finalHsl.s}%, ${finalHsl.l}%)`;
+
+            const entry = { el: ripple, hsl: finalHsl, key: activeKey };
+            activeRipplesList.push(entry);
+            updateRippleBlendState();
+            ripplesStage.appendChild(ripple);
+
+            ripple.addEventListener('animationend', () => {
+                ripple.remove();
+                const idx = activeRipplesList.indexOf(entry);
+                if (idx !== -1) activeRipplesList.splice(idx, 1);
+                updateRippleBlendState();
+            }, { once: true });
         }
 
         function createRipple(x, y, isClick = false, forcedKey = null) {
             const activeKey = forcedKey || emocionActivaKey;
             if (!isSecondScreen || !activeKey || !EMOCIONES[activeKey]) return;
-            if (activeRipplesCount >= MAX_ACTIVE_RIPPLES) return;
 
-            const emocion = EMOCIONES[activeKey];
-            let burstCount = isClick ? 2 : 1;
-            if (activeKey === 'alegria' || activeKey === 'ira') {
-                burstCount = isClick ? 4 : 1;
-            }
+            spawnSingleRipple(x, y, activeKey);
 
-            for (let i = 0; i < burstCount; i++) {
-                setTimeout(() => {
-                    if (activeRipplesCount >= MAX_ACTIVE_RIPPLES) return;
-                    const temp = document.createElement('div');
-                    
-                    if (emocion.esParticulaEstela) {
-                        const bubbleCount = 4 + Math.floor(Math.random() * 4);
-                        let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" class="ripple">`;
-                        for (let b = 0; b < bubbleCount; b++) {
-                            const cx = 110 + (Math.random() - 0.5) * 90;
-                            const cy = 110 + (Math.random() - 0.5) * 90;
-                            const r = 8 + Math.random() * 24;
-                            const strokeWidth = 1.5 + Math.random() * 2.5;
-                            svgContent += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" />`;
-                        }
-                        svgContent += `</svg>`;
-                        temp.innerHTML = svgContent;
-                    } 
-                    else if (emocion.esEstelaAlegria) {
-                        const rot = Math.round(Math.random() * 360);
-                        const scaleInner = (0.8 + Math.random() * 0.4).toFixed(2);
-                        // Path único limpio en lugar de duplicar el trazado completo
-                        temp.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 244.89 244.89" class="ripple">
-                                <g transform="rotate(${rot} 122.44 122.44) scale(${scaleInner})">
-                                    <path class="ripple-path" d="M140,244.39c-7.65,0-15.69-4.33-17.83-14.81l-2.18-10.63-2.72,10.51c-3.08,11.93-13.56,15.32-21.98,13.42-8.43-1.9-16.43-9.46-14.1-21.56l2.06-10.66-6.53,8.67c-7.41,9.84-18.39,8.97-25.45,3.99-7.06-4.98-11.56-15.02-4.78-25.31l5.98-9.06-9.35,5.51c-10.62,6.26-20.42,1.25-25.04-6.06-4.61-7.3-4.93-18.31,5.27-25.21l8.99-6.08-10.75,1.51c-12.2,1.72-19.34-6.66-20.81-15.18-1.47-8.51,2.45-18.8,14.52-21.27l10.63-2.18-10.51-2.72C3.51,114.19.12,103.72,2.02,95.29c1.9-8.43,9.46-16.43,21.56-14.1l10.66,2.06-8.67-6.53c-9.84-7.41-8.97-18.39-3.99-25.45,4.98-7.06,15.03-11.56,25.31-4.77l9.06,5.98-5.51-9.35c-6.26-10.62-1.25-20.42,6.06-25.04,7.3-4.61,18.31-4.93,25.21,5.27l6.08,8.99-1.51-10.75c-1.72-12.2,6.66-19.34,15.18-20.81,8.51-1.47,18.8,2.45,21.27,14.52l2.18,10.63,2.72-10.51c3.08-11.93,13.56-15.32,21.98-13.42,8.43,1.9,16.43,9.46,14.1,21.56l-2.06,10.66,6.53-8.67c7.41-9.84,18.39-8.97,25.45-3.99,7.06,4.98,11.56,15.02,4.78,25.31l-5.98,9.06,9.35-5.51c10.62-6.26,20.42-1.25,25.04,6.06,4.62,7.3,4.93,18.31-5.27,25.21l-8.99,6.08,10.75-1.51c12.21-1.72,19.34,6.66,20.81,15.18s-2.45,18.8-14.52,21.27l-10.63,2.18,10.51,2.72c11.93,3.08,15.32,13.56,13.42,21.98-1.9,8.43-9.46,16.43-21.56,14.1l-10.66-2.06,8.67,6.53c9.84,7.42,8.97,18.39,3.99,25.45-4.98,7.06-15.02,11.56-25.31,4.77l-9.06-5.98,5.51,9.35c6.26,10.62,1.25,20.42-6.06,25.04-7.3,4.62-18.31,4.93-25.21-5.27l-6.08-8.99,1.51,10.75c1.72,12.2-6.66,19.34-15.17,20.81-1.12.19-2.28.29-3.44.29Z"/>
-                                </g>
-                            </svg>
-                        `;
-                    } 
-                    else if (emocion.esEstelaIra) {
-                        const rot = Math.round(Math.random() * 360);
-                        const scaleInner = (0.6 + Math.random() * 0.8).toFixed(2);
-                        temp.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 324.84 317.78" class="ripple">
-                                <g transform="rotate(${rot} 162.42 158.89) scale(${scaleInner})">
-                                    <polygon class="ripple-path" points="194.65 99.47 280.11 33.43 238.93 124.4 321.73 164.91 231.01 220.25 250.78 278.85 179.56 227.87 29.35 313.7 95.34 200.75 4.17 172.89 104.43 126.08 82.13 3.86 194.65 99.47"/>
-                                </g>
-                            </svg>
-                        `;
-                    } 
-                    else {
-                        temp.innerHTML = emocion.ondaSvg;
-                    }
-
-                    const ripple = temp.firstElementChild;
-                    if (!ripple) return;
-
-                    let offsetX = 0;
-                    let offsetY = 0;
-                    if (activeKey === 'asco') {
-                        offsetX = (Math.random() - 0.5) * 35;
-                        offsetY = (Math.random() - 0.5) * 35;
-                    } else if (activeKey === 'alegria' || activeKey === 'ira') {
-                        offsetX = (Math.random() - 0.5) * 45;
-                        offsetY = (Math.random() - 0.5) * 45;
-                    }
-
-                    ripple.style.left = `${x + offsetX}px`;
-                    ripple.style.top = `${y + offsetY}px`;
-                    ripple.style.color = getDynamicColor(emocion.colorConfig);
-
-                    activeRipplesCount++;
-                    document.body.appendChild(ripple);
-
-                    ripple.addEventListener('animationend', () => {
-                        ripple.remove();
-                        activeRipplesCount = Math.max(0, activeRipplesCount - 1);
-                    }, { once: true });
-                }, i * 100);
+            if (isClick && !forcedKey) {
+                setTimeout(() => spawnSingleRipple(x, y, activeKey), 140);
             }
         }
 
-        // Eventos de interacción manual con el puntero
         window.addEventListener('pointerdown', (e) => {
             if (!isSecondScreen || e.target.closest('.panel-figuras') || e.target.closest('#cam-ui') || e.target.closest('#home-btn') || !emocionActivaKey) return;
             isMouseDown = true;
@@ -675,10 +762,12 @@
         }, { passive: true });
 
         // =========================================================================
-        // 4. DETECCIÓN GEOMÉTRICA DE FIGURAS 3D (OPTIMIZADA A 180PX DE ANCHO)
+        // 4. DETECCIÓN MULTI-FIGURA SIMULTÁNEA (1 A 6 FIGURAS A LA VEZ)
         // =========================================================================
         (function () {
-            const REF_3D = {
+            const MAX_FIGURAS_SIMULTANEAS = 6;
+            const STORAGE_KEY = 'malla_galactica_ref_v1';
+            const DEFAULT_REF = {
                 "tristeza": [{"h3":-0.326,"h4":-1.43,"sol":0.576,"fd":[0.009,0.028,0.052,0.185,0.043,0.039,0.06,0.018,0.066,0.048]}],
                 "asco":     [{"h3":0.026,"h4":-2.007,"sol":0.873,"fd":[0.008,0.009,0.057,0.059,0.021,0.019,0.033,0.006,0.028,0.011]}],
                 "alegria":  [{"h3":-0.943,"h4":-1.372,"sol":0.747,"fd":[0.023,0.004,0.021,0.012,0.01,0.009,0.011,0.022,0.017,0.007]}],
@@ -686,6 +775,35 @@
                 "ira":      [{"h3":-0.735,"h4":-2.2,"sol":0.456,"fd":[0.023,0.01,0.023,0.055,0.049,0.017,0.086,0.009,0.035,0.083]}],
                 "miedo":    [{"h3":-0.349,"h4":-0.983,"sol":0.501,"fd":[0.027,0.061,0.093,0.082,0.074,0.07,0.078,0.05,0.047,0.035]}]
             };
+
+            let REF_3D = DEFAULT_REF;
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) REF_3D = JSON.parse(saved);
+            } catch (_) {}
+
+            let latestHandLandmarks = [];
+            let mpHandsReady = false;
+            let mpBusy = false;
+            let lastMpTime = 0;
+
+            let mpHands = null;
+            if (typeof Hands !== 'undefined') {
+                mpHands = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
+                mpHands.setOptions({
+                    maxNumHands: 2,
+                    modelComplexity: 0,
+                    minDetectionConfidence: 0.45,
+                    minTrackingConfidence: 0.45
+                });
+                mpHands.onResults((results) => {
+                    latestHandLandmarks = results.multiHandLandmarks || [];
+                    mpBusy = false;
+                });
+                mpHandsReady = true;
+            }
 
             function majority(mask, w, h) {
                 const out = new Uint8Array(w * h);
@@ -721,42 +839,120 @@
                 return Math.abs(a) / 2;
             }
 
-            function simplifyPolygon(pts, epsilon) {
-                if (pts.length < 3) return pts;
-                let dmax = 0, index = 0;
-                const end = pts.length - 1;
-                const [x1, y1] = pts[0], [x2, y2] = pts[end];
-                const dx = x2 - x1, dy = y2 - y1;
-                const len = Math.hypot(dx, dy) || 1e-9;
+            function traceContourMoore(compMask, w, h, startIdx) {
+                const dirs = [
+                    [1, 0], [1, 1], [0, 1], [-1, 1],
+                    [-1, 0], [-1, -1], [0, -1], [1, -1]
+                ];
+                let sx = startIdx % w;
+                let sy = (startIdx / w) | 0;
+                let cx = sx, cy = sy;
+                let backtrackDir = 6;
+                const contour = [[cx, cy]];
+                const maxSteps = w * h * 2;
+                let firstStepDir = -1;
 
-                for (let i = 1; i < end; i++) {
-                    const [x0, y0] = pts[i];
-                    const d = Math.abs(dy * x0 - dx * y0 + x2 * y1 - y2 * x1) / len;
-                    if (d > dmax) { index = i; dmax = d; }
+                for (let step = 0; step < maxSteps; step++) {
+                    let found = false;
+                    for (let k = 1; k <= 8; k++) {
+                        const d = (backtrackDir + k) & 7;
+                        const nx = cx + dirs[d][0];
+                        const ny = cy + dirs[d][1];
+                        if (nx >= 0 && nx < w && ny >= 0 && ny < h && compMask[ny * w + nx]) {
+                            if (step === 0) firstStepDir = d;
+                            else if (cx === sx && cy === sy && d === firstStepDir) {
+                                return contour;
+                            }
+                            cx = nx;
+                            cy = ny;
+                            backtrackDir = (d + 5) & 7;
+                            contour.push([cx, cy]);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) break;
                 }
-
-                if (dmax > epsilon) {
-                    const rec1 = simplifyPolygon(pts.slice(0, index + 1), epsilon);
-                    const rec2 = simplifyPolygon(pts.slice(index), epsilon);
-                    return rec1.slice(0, -1).concat(rec2);
-                }
-                return [pts[0], pts[end]];
+                return contour;
             }
 
-            function extractVertices(bpts, cx, cy, bbox) {
-                if (bpts.length < 4) return bpts;
-                const ordered = bpts.slice().sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
-                const step = Math.max(1, Math.floor(ordered.length / 40));
-                const sampled = [];
-                for (let i = 0; i < ordered.length; i += step) sampled.push(ordered[i]);
+            function simplifyClosedPolygon(pts, epsilon) {
+                if (pts.length < 4) return pts;
+                let farIdx = 1, maxD = -1;
+                for (let i = 1; i < pts.length; i++) {
+                    const d = Math.hypot(pts[i][0] - pts[0][0], pts[i][1] - pts[0][1]);
+                    if (d > maxD) { maxD = d; farIdx = i; }
+                }
 
+                function rdp(slice) {
+                    if (slice.length < 3) return slice;
+                    let dmax = 0, index = 0;
+                    const end = slice.length - 1;
+                    const [x1, y1] = slice[0], [x2, y2] = slice[end];
+                    const dx = x2 - x1, dy = y2 - y1;
+                    const len = Math.hypot(dx, dy) || 1e-9;
+
+                    for (let i = 1; i < end; i++) {
+                        const [x0, y0] = slice[i];
+                        const d = Math.abs(dy * x0 - dx * y0 + x2 * y1 - y2 * x1) / len;
+                        if (d > dmax) { index = i; dmax = d; }
+                    }
+                    if (dmax > epsilon) {
+                        const r1 = rdp(slice.slice(0, index + 1));
+                        const r2 = rdp(slice.slice(index));
+                        return r1.slice(0, -1).concat(r2);
+                    }
+                    return [slice[0], slice[end]];
+                }
+
+                const part1 = rdp(pts.slice(0, farIdx + 1));
+                const part2 = rdp(pts.slice(farIdx).concat([pts[0]]));
+                return part1.slice(0, -1).concat(part2.slice(0, -1));
+            }
+
+            function extractAllFigureVertices(contour, bbox) {
+                if (contour.length < 6) return contour;
                 const diag = Math.hypot(bbox[2] - bbox[0], bbox[3] - bbox[1]);
-                const epsilon = Math.max(1.8, diag * 0.045);
-                return simplifyPolygon(sampled, epsilon);
+                const eps = Math.max(0.75, diag * 0.011);
+                const poly = simplifyClosedPolygon(contour, eps);
+                if (poly.length <= 4) return poly;
+
+                const minVertexDist = Math.max(1.5, diag * 0.02);
+                const vertices = [];
+                const n = poly.length;
+
+                for (let i = 0; i < n; i++) {
+                    const prev = poly[(i - 1 + n) % n];
+                    const curr = poly[i];
+                    const next = poly[(i + 1) % n];
+                    const v1x = prev[0] - curr[0], v1y = prev[1] - curr[1];
+                    const v2x = next[0] - curr[0], v2y = next[1] - curr[1];
+                    const m1 = Math.hypot(v1x, v1y), m2 = Math.hypot(v2x, v2y);
+                    if (m1 < 0.7 || m2 < 0.7) continue;
+
+                    const cosAng = Math.max(-1, Math.min(1, (v1x * v2x + v1y * v2y) / (m1 * m2)));
+                    const angleDeg = Math.acos(cosAng) * (180 / Math.PI);
+
+                    if (angleDeg < 172) {
+                        const last = vertices[vertices.length - 1];
+                        if (!last || Math.hypot(curr[0] - last[0], curr[1] - last[1]) >= minVertexDist) {
+                            vertices.push(curr);
+                        }
+                    }
+                }
+
+                if (vertices.length > 2) {
+                    const first = vertices[0];
+                    const last = vertices[vertices.length - 1];
+                    if (Math.hypot(first[0] - last[0], first[1] - last[1]) < minVertexDist) {
+                        vertices.pop();
+                    }
+                }
+
+                return vertices.length >= 4 ? vertices : poly;
             }
 
             const NANG = 64, NHARM = 10;
-            // Tablas precalculadas de seno/coseno para Fourier (evita Math.cos/sin repetitivo en cada frame)
             const COS_TAB = [], SIN_TAB = [];
             for (let k = 1; k <= NHARM; k++) {
                 const cRow = new Float64Array(NANG), sRow = new Float64Array(NANG);
@@ -769,17 +965,32 @@
                 SIN_TAB.push(sRow);
             }
 
-            function describe(idx, w, h, mask) {
+            function describe(idx, w, h) {
                 const n = idx.length;
                 let sx = 0, sy = 0;
                 for (let k = 0; k < n; k++) { const i = idx[k]; sx += i % w; sy += (i / w) | 0; }
                 const cx = sx / n, cy = sy / n;
                 let a = 0, b = 0, c = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
+
+                const compMask = new Uint8Array(w * h);
+                let topLeftStart = -1;
+
                 for (let k = 0; k < n; k++) {
                     const i = idx[k], px = i % w, py = (i / w) | 0, dx = px - cx, dy = py - cy;
+                    compMask[i] = 1;
+                    if (topLeftStart === -1 || i < topLeftStart) topLeftStart = i;
                     a += dx * dx; b += dx * dy; c += dy * dy;
                     if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
                 }
+
+                const bw = (x1 - x0 + 1);
+                const bh = (y1 - y0 + 1);
+                const aspect = bw / Math.max(1, bh);
+                if (aspect < 0.45 || aspect > 2.2) return null;
+
+                const rectangularity = n / (bw * bh);
+                if (rectangularity > 0.88 || rectangularity < 0.18) return null;
+
                 a /= n; b /= n; c /= n;
                 const tr = a + c, det = Math.max(1e-9, a * c - b * b), s = Math.sqrt(det), t = Math.sqrt(tr + 2 * s);
                 const ia = (c + s) / (s * t), ib = -b / (s * t), ic = (a + s) / (s * t);
@@ -793,8 +1004,11 @@
                     let ang = Math.atan2(v, u); if (ang < 0) ang += 2 * Math.PI;
                     const bi = Math.min(NANG - 1, (ang / (2 * Math.PI) * NANG) | 0), r = Math.hypot(u, v);
                     if (r > rad[bi]) rad[bi] = r;
-                    if (!mask[i - 1] || !mask[i + 1] || !mask[i - w] || !mask[i + w]) bpts.push([px, py]);
+                    if (!compMask[i - 1] || !compMask[i + 1] || !compMask[i - w] || !compMask[i + w]) bpts.push([px, py]);
                 }
+
+                const compactness = (4 * Math.PI * n) / Math.max(1, bpts.length * bpts.length);
+                if (compactness < 0.06) return null;
 
                 const n30 = m30 / n, n03 = m03 / n, n21 = m21 / n, n12 = m12 / n;
                 const h3 = (n30 - 3 * n12) ** 2 + (3 * n21 - n03) ** 2;
@@ -814,28 +1028,35 @@
 
                 const hl = hull(bpts);
                 const sol = hl.length > 2 ? Math.min(1, n / polyArea(hl)) : 1;
-                const bbox = [x0, y0, x1, y1];
-                const vertices = extractVertices(bpts, cx, cy, bbox);
-                const lg = v => Math.log10(Math.abs(v) + 1e-9);
+                if (sol < 0.38) return null;
 
+                const bbox = [x0, y0, x1, y1];
+                const orderedContour = topLeftStart !== -1 ? traceContourMoore(compMask, w, h, topLeftStart) : bpts;
+                const vertices = extractAllFigureVertices(orderedContour, bbox);
+                if (vertices.length < 4) return null;
+
+                const lg = v => Math.log10(Math.abs(v) + 1e-9);
                 return { area: n, cx, cy, bbox, vertices, f: { h3: lg(h3), h4: lg(h4), sol, fd } };
             }
 
+            // Segmentación mejorada para detectar de 1 hasta 6 figuras juntas de distintos colores y tamaños
             function segment(rgba, w, h, minArea, maxFrac) {
-                maxFrac = maxFrac || 0.55;
+                maxFrac = maxFrac || 0.35;
                 const total = w * h;
                 const gray = new Uint8Array(total);
                 const hist = new Int32Array(256);
 
                 for (let i = 0; i < total; i++) {
                     const o = i << 2;
-                    const g = (77 * rgba[o] + 150 * rgba[o + 1] + 29 * rgba[o + 2]) >> 8;
-                    gray[i] = g;
-                    hist[g]++;
+                    const lum = (77 * rgba[o] + 150 * rgba[o + 1] + 29 * rgba[o + 2]) >> 8;
+                    gray[i] = lum;
+                    hist[lum]++;
                 }
 
                 let sum = 0;
                 for (let t = 0; t < 256; t++) sum += t * hist[t];
+                if (total < 100) return [];
+
                 let sumB = 0, wB = 0, wF = 0, varMax = 0, threshold = 128;
                 for (let t = 0; t < 256; t++) {
                     wB += hist[t];
@@ -849,17 +1070,49 @@
                     if (varBetween > varMax) { varMax = varBetween; threshold = t; }
                 }
 
-                let borderSum = 0, borderCount = 0;
-                for (let x = 0; x < w; x++) { borderSum += gray[x] + gray[(h - 1) * w + x]; borderCount += 2; }
-                for (let y = 0; y < h; y++) { borderSum += gray[y * w] + gray[y * w + (w - 1)]; borderCount += 2; }
-                const lightBg = (borderSum / borderCount) > threshold;
-
-                const raw = new Uint8Array(total);
-                for (let i = 0; i < total; i++) {
-                    raw[i] = lightBg ? (gray[i] < threshold ? 1 : 0) : (gray[i] > threshold ? 1 : 0);
+                // Calcular color promedio del borde (fondo) para detectar también figuras de color distinto al fondo
+                let bgR = 0, bgG = 0, bgB = 0, borderSum = 0, borderCount = 0;
+                for (let x = 0; x < w; x++) {
+                    const top = x, bot = (h - 1) * w + x;
+                    borderSum += gray[top] + gray[bot];
+                    bgR += rgba[top << 2] + rgba[bot << 2];
+                    bgG += rgba[(top << 2) + 1] + rgba[(bot << 2) + 1];
+                    bgB += rgba[(top << 2) + 2] + rgba[(bot << 2) + 2];
+                    borderCount += 2;
+                }
+                for (let y = 0; y < h; y++) {
+                    const left = y * w, right = y * w + (w - 1);
+                    borderSum += gray[left] + gray[right];
+                    bgR += rgba[left << 2] + rgba[right << 2];
+                    bgG += rgba[(left << 2) + 1] + rgba[(right << 2) + 1];
+                    bgB += rgba[(left << 2) + 2] + rgba[(right << 2) + 2];
+                    borderCount += 2;
                 }
 
-                const mask = majority(majority(raw, w, h), w, h);
+                bgR /= borderCount;
+                bgG /= borderCount;
+                bgB /= borderCount;
+                const lightBg = (borderSum / borderCount) > threshold;
+                const interClassStd = Math.sqrt(varMax / (total * total));
+
+                const marginLum = 8;
+                const raw = new Uint8Array(total);
+                for (let i = 0; i < total; i++) {
+                    const o = i << 2;
+                    const byLum = interClassStd >= 20 && (lightBg
+                        ? gray[i] < (threshold - marginLum)
+                        : gray[i] > (threshold + marginLum));
+
+                    // Distancia cromática al fondo para rescatar figuras de colores claros (ej. amarillo/verde sobre fondo claro)
+                    const dr = rgba[o] - bgR;
+                    const dg = rgba[o + 1] - bgG;
+                    const db = rgba[o + 2] - bgB;
+                    const colorDist = Math.abs(dr) + Math.abs(dg) + Math.abs(db);
+
+                    raw[i] = (byLum || colorDist > 95) ? 1 : 0;
+                }
+
+                const mask = majority(raw, w, h);
                 const seen = new Uint8Array(total);
                 const parts = [];
 
@@ -873,7 +1126,7 @@
                         const i = stack.pop();
                         idx.push(i);
                         const x = i % w, y = (i / w) | 0;
-                        if (x === 0 || x === w - 1 || y === 0 || y === h - 1) touchesBorder = true;
+                        if (x <= 1 || x >= w - 2 || y <= 1 || y >= h - 2) touchesBorder = true;
 
                         if (x > 0 && mask[i - 1] && !seen[i - 1]) { seen[i - 1] = 1; stack.push(i - 1); }
                         if (x < w - 1 && mask[i + 1] && !seen[i + 1]) { seen[i + 1] = 1; stack.push(i + 1); }
@@ -882,7 +1135,8 @@
                     }
 
                     if (!touchesBorder && idx.length >= minArea && idx.length <= total * maxFrac) {
-                        parts.push(describe(idx, w, h, mask));
+                        const desc = describe(idx, w, h);
+                        if (desc) parts.push(desc);
                     }
                 }
                 return parts;
@@ -895,10 +1149,14 @@
                 return WT.h3 * Math.abs(a.h3 - b.h3) + WT.h4 * Math.abs(a.h4 - b.h4) + WT.sol * Math.abs(a.sol - b.sol) + WT.fd * f;
             }
 
+            // Evalúa hasta 6 figuras presentes simultáneamente en el encuadre
             function classify(blobs, refs, maxDist, margin) {
                 const out = []; margin = margin || 0;
                 for (const b of blobs) {
-                    const ds = Object.keys(refs).map(e => ({ e, d: Math.min(...refs[e].map(r => featDist(b.f, r))) })).sort((x, y) => x.d - y.d);
+                    const ds = Object.keys(refs)
+                        .map(e => ({ e, d: Math.min(...refs[e].map(r => featDist(b.f, r))) }))
+                        .sort((x, y) => x.d - y.d);
+
                     if (ds[0].d <= maxDist && (ds.length < 2 || ds[1].d - ds[0].d >= margin)) {
                         out.push({
                             emotion: ds[0].e,
@@ -907,15 +1165,21 @@
                             cx: b.cx,
                             cy: b.cy,
                             bbox: b.bbox,
-                            vertices: b.vertices
+                            vertices: b.vertices,
+                            f: b.f
                         });
                     }
+                }
+                // Si hay más de 6 candidatos, conservar los 6 con mejor ajuste (menor distancia de forma)
+                if (out.length > MAX_FIGURAS_SIMULTANEAS) {
+                    out.sort((a, b) => a.dist - b.dist);
+                    out.length = MAX_FIGURAS_SIMULTANEAS;
                 }
                 return out;
             }
 
-            // 180px de ancho: ~3.2x más rápido que 320px manteniendo la misma precisión geométrica
-            const MAX_DIST = 1.45, W = 180;
+            // Tolerancia ligeramente ampliada (0.98) para figuras más pequeñas cuando hay 6 juntas
+            const MAX_DIST = 0.98, MARGIN = 0.03, W = 280;
             const video = document.getElementById('cam-video');
             const overlay = document.getElementById('cam-overlay');
             const octx = overlay.getContext('2d');
@@ -924,20 +1188,87 @@
             const statusEl = document.getElementById('cam-status');
             const vertsEl = document.getElementById('cam-verts');
             const btnStart = document.getElementById('cam-start');
+            const btnStartInitial = document.getElementById('start-cam-initial');
+            const startCamHint = document.getElementById('start-cam-hint');
             const btnFlip = document.getElementById('cam-flip');
             const preview = document.getElementById('cam-preview');
             const chips = {};
             document.querySelectorAll('[data-emo]').forEach(el => chips[el.dataset.emo] = el);
 
             let stream = null, facing = 'environment', mirrored = false, running = false;
-            const hits = {}, pos = {}, lastEmit = {};
-            Object.keys(EMOCIONES).forEach(k => { hits[k] = 0; lastEmit[k] = 0; });
+            let lastBlobs = [];
+            const hits = {};
+            Object.keys(EMOCIONES).forEach(k => { hits[k] = 0; });
+
+            // Rastreadores persistentes por proximidad espacial para hasta 6 figuras simultáneas
+            let activeTrackers = [];
+            let nextTrackerId = 1;
+
+            function updateSpatialTrackers(detections, now) {
+                const usedTrackerIds = new Set();
+                const matched = [];
+
+                for (const d of detections) {
+                    let bestTracker = null;
+                    let bestDist = 42; // radio máximo de movimiento entre cuadros (en px de trabajo)
+
+                    for (const tr of activeTrackers) {
+                        if (usedTrackerIds.has(tr.id)) continue;
+                        // Priorizar coincidencia con la misma emoción cercana
+                        const dist = Math.hypot(d.cx - tr.x, d.cy - tr.y);
+                        const penalty = tr.emotion === d.emotion ? 0 : 18;
+                        if (dist + penalty < bestDist) {
+                            bestDist = dist + penalty;
+                            bestTracker = tr;
+                        }
+                    }
+
+                    if (bestTracker) {
+                        usedTrackerIds.add(bestTracker.id);
+                        bestTracker.x += (d.cx - bestTracker.x) * 0.65;
+                        bestTracker.y += (d.cy - bestTracker.y) * 0.65;
+                        bestTracker.emotion = d.emotion;
+                        bestTracker.lastSeen = now;
+                        matched.push({ tracker: bestTracker, detection: d });
+                    } else if (activeTrackers.length < MAX_FIGURAS_SIMULTANEAS) {
+                        const newTr = {
+                            id: nextTrackerId++,
+                            emotion: d.emotion,
+                            x: d.cx,
+                            y: d.cy,
+                            lastEmit: 0,
+                            lastSeen: now
+                        };
+                        usedTrackerIds.add(newTr.id);
+                        activeTrackers.push(newTr);
+                        matched.push({ tracker: newTr, detection: d });
+                    }
+                }
+
+                // Eliminar rastreadores que desaparecieron de cámara
+                activeTrackers = activeTrackers.filter(tr => usedTrackerIds.has(tr.id));
+                return matched;
+            }
+
+            Object.entries(chips).forEach(([emoKey, el]) => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (latestHandLandmarks && latestHandLandmarks.length > 0) return;
+                    if (lastBlobs.length > 0) {
+                        const biggest = lastBlobs.reduce((a, b) => a.area > b.area ? a : b);
+                        REF_3D[emoKey].push(biggest.f);
+                        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(REF_3D)); } catch (_) {}
+                        statusEl.textContent = 'Calibrada: ' + EMOCIONES[emoKey].nombre;
+                    }
+                });
+            });
 
             async function startCamera() {
                 try {
                     statusEl.textContent = 'Solicitando cámara…';
+                    startCamHint.textContent = 'Solicitando acceso a cámara...';
                     if (stream) stream.getTracks().forEach(t => t.stop());
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 320 }, height: { ideal: 240 } }, audio: false });
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
                     video.srcObject = stream; await video.play();
                     const st = stream.getVideoTracks()[0].getSettings();
                     mirrored = st.facingMode ? st.facingMode === 'user' : facing === 'user' || !/Android|iPhone|iPad/i.test(navigator.userAgent);
@@ -945,96 +1276,157 @@
                     preview.classList.remove('hidden');
                     btnStart.textContent = 'Cámara activa'; btnStart.disabled = true;
                     btnFlip.classList.remove('hidden');
-                    statusEl.textContent = 'Muestra un modelo 3D a la cámara';
-                    if (!running) { running = true; tick(); }
+                    btnStartInitial.classList.add('hidden');
+                    startCamHint.textContent = 'Cámara activa · Muestra de 1 a 6 figuras frente al lente';
+                    statusEl.textContent = 'Muestra de 1 a 6 figuras';
+                    if (!running) { running = true; requestAnimationFrame(tick); }
                 } catch (err) {
                     console.error(err);
                     statusEl.textContent = 'No se pudo abrir la cámara';
+                    startCamHint.textContent = 'Haz clic para entrar o activa la cámara';
+                    btnStartInitial.classList.remove('hidden');
                 }
             }
 
-            function drawGeometry(verts, rgb) {
+            function drawAllFigureVertices(verts, rgb, indexLabel) {
                 if (!verts || verts.length < 3) return;
                 const [r, g, b] = rgb;
-                octx.strokeStyle = `rgba(${r},${g},${b}, 0.9)`;
-                octx.fillStyle = `rgba(${r},${g},${b}, 0.18)`;
+
+                octx.strokeStyle = `rgba(${r},${g},${b}, 0.85)`;
+                octx.fillStyle = `rgba(${r},${g},${b}, 0.16)`;
                 octx.lineWidth = 1.4;
                 octx.beginPath();
                 octx.moveTo(verts[0][0], verts[0][1]);
-                for (let i = 1; i < verts.length; i++) octx.lineTo(verts[i][0], verts[i][1]);
+                for (let i = 1; i < verts.length; i++) {
+                    octx.lineTo(verts[i][0], verts[i][1]);
+                }
                 octx.closePath();
                 octx.fill();
                 octx.stroke();
 
-                octx.fillStyle = '#ffffff';
                 for (const [vx, vy] of verts) {
-                    octx.fillRect(vx - 1.5, vy - 1.5, 3, 3);
+                    octx.fillStyle = `rgba(${r},${g},${b}, 0.95)`;
+                    octx.beginPath();
+                    octx.arc(vx, vy, 2.5, 0, Math.PI * 2);
+                    octx.fill();
+
+                    octx.fillStyle = '#ffffff';
+                    octx.beginPath();
+                    octx.arc(vx, vy, 1.1, 0, Math.PI * 2);
+                    octx.fill();
                 }
             }
 
-            function tick() {
-                if (isSecondScreen && video.readyState >= 2 && video.videoWidth) {
+            let lastFrameTime = 0;
+            function tick(now) {
+                if (now - lastFrameTime >= 55 && video.readyState >= 2 && video.videoWidth) {
+                    lastFrameTime = now;
                     const w = W, h = Math.round(W * video.videoHeight / video.videoWidth);
                     if (work.width !== w || work.height !== h) { work.width = w; work.height = h; overlay.width = w; overlay.height = h; }
                     wctx.drawImage(video, 0, 0, w, h);
-                    const frame = wctx.getImageData(0, 0, w, h);
 
-                    const blobs = segment(frame.data, w, h, Math.round(w * h * 0.008));
-                    const found = {};
-                    for (const d of classify(blobs, REF_3D, MAX_DIST)) {
-                        if (!found[d.emotion] || d.area > found[d.emotion].area) found[d.emotion] = d;
+                    if (mpHandsReady && !mpBusy && now - lastMpTime >= 100) {
+                        mpBusy = true;
+                        lastMpTime = now;
+                        mpHands.send({ image: work }).catch(() => { mpBusy = false; });
                     }
 
-                    const now = performance.now();
                     octx.clearRect(0, 0, w, h);
+                    const handsCount = latestHandLandmarks ? latestHandLandmarks.length : 0;
 
-                    if (Object.keys(found).length === 0 && blobs.length > 0) {
-                        const biggest = blobs.reduce((a, b) => a.area > b.area ? a : b);
-                        drawGeometry(biggest.vertices, [0, 245, 212]);
-                        vertsEl.textContent = `Vértices detectados: ${biggest.vertices.length}`;
+                    if (handsCount > 0) {
+                        lastBlobs = [];
+                        activeTrackers = [];
+                        Object.keys(EMOCIONES).forEach(k => {
+                            hits[k] = 0;
+                            chips[k].classList.remove('chip-on');
+                        });
+
+                        if (isSecondScreen) {
+                            if (emocionActivaKey !== seleccionManualKey) {
+                                seleccionarEmocion(seleccionManualKey);
+                            }
+                            statusEl.textContent = 'BLOQUEADO: Mano detectada';
+                            vertsEl.textContent = `Vértices: -- · Manos: ${handsCount}`;
+                        }
+                        if (running) requestAnimationFrame(tick);
+                        return;
                     }
 
-                    for (const k of Object.keys(EMOCIONES)) {
-                        const d = found[k];
-                        if (d) hits[k] = Math.min(6, hits[k] + 1);
-                        else   hits[k] = Math.max(0, hits[k] - 2);
+                    const frame = wctx.getImageData(0, 0, w, h);
+                    // minArea = 0.0045 permite detectar hasta 6 figuras simultáneamente en el encuadre
+                    const blobs = segment(frame.data, w, h, Math.round(w * h * 0.0045));
+                    lastBlobs = blobs;
 
-                        const on = hits[k] >= 4;
-                        chips[k].classList.toggle('chip-on', on);
+                    const detections = classify(blobs, REF_3D, MAX_DIST, MARGIN);
+                    const trackedPairs = updateSpatialTrackers(detections, now);
+                    const detectedTypes = new Set(trackedPairs.map(p => p.detection.emotion));
 
-                        if (d && on) {
-                            const p = pos[k] || (pos[k] = { x: d.cx, y: d.cy });
-                            p.x += (d.cx - p.x) * 0.5; p.y += (d.cy - p.y) * 0.5;
+                    const detectedNames = [];
+                    let totalVerts = 0;
 
-                            drawGeometry(d.vertices, EMOCIONES[k].rgb);
-                            if (emocionActivaKey !== k) seleccionarEmocion(k);
+                    Object.keys(EMOCIONES).forEach(k => {
+                        const isPresent = detectedTypes.has(k);
+                        hits[k] = isPresent ? 1 : 0;
+                        chips[k].classList.toggle('chip-on', isPresent);
+                    });
 
-                            let nx = p.x / w; if (mirrored) nx = 1 - nx;
-                            const ny = p.y / h;
-                            if (now - lastEmit[k] > 550) {
-                                createRipple(nx * window.innerWidth, ny * window.innerHeight, true, k);
-                                lastEmit[k] = now;
+                    // Intervalo dinámico según cantidad de figuras para mantener fluidez con 6 ondas simultáneas
+                    const emitInterval = trackedPairs.length >= 4 ? 620 : 480;
+
+                    trackedPairs.forEach(({ tracker, detection: d }, idx) => {
+                        const k = d.emotion;
+
+                        if (!isSecondScreen && now >= autoSwitchCooldownUntil) {
+                            entrarSegundaPantalla();
+                        }
+
+                        if (isSecondScreen) {
+                            drawAllFigureVertices(d.vertices, EMOCIONES[k].rgb, idx + 1);
+                            detectedNames.push(EMOCIONES[k].nombre);
+                            totalVerts += d.vertices.length;
+
+                            let nx = tracker.x / w; if (mirrored) nx = 1 - nx;
+                            const ny = tracker.y / h;
+
+                            if (now - tracker.lastEmit > emitInterval) {
+                                createRipple(nx * window.innerWidth, ny * window.innerHeight, false, k);
+                                tracker.lastEmit = now;
                             }
+                        }
+                    });
 
-                            statusEl.textContent = 'Forma: ' + EMOCIONES[k].nombre;
-                            vertsEl.textContent = `Vértices: ${d.vertices.length}`;
-                        } else if (!on) {
-                            delete pos[k];
+                    if (isSecondScreen) {
+                        if (trackedPairs.length > 0) {
+                            if (trackedPairs.length === 1 && emocionActivaKey !== trackedPairs[0].detection.emotion) {
+                                seleccionarEmocion(trackedPairs[0].detection.emotion);
+                            } else if (trackedPairs.length > 1) {
+                                seleccionarEmocion(null);
+                                document.querySelectorAll('.btn-figura').forEach((btn) => {
+                                    btn.classList.toggle('activo', detectedTypes.has(btn.dataset.emocion));
+                                });
+                            }
+                            statusEl.textContent = (trackedPairs.length > 1 ? `Figuras (${trackedPairs.length}/6): ` : 'Figura: ') + detectedNames.join(' + ');
+                            vertsEl.textContent = `Vértices: ${totalVerts} · Figuras: ${trackedPairs.length} / 6`;
+                        } else {
+                            if (emocionActivaKey !== seleccionManualKey) {
+                                seleccionarEmocion(seleccionManualKey);
+                            }
+                            statusEl.textContent = 'Muestra de 1 a 6 figuras';
+                            vertsEl.textContent = 'Vértices: -- · Figuras: 0 / 6';
                         }
                     }
-
-                    const active = Object.keys(EMOCIONES).some(k => hits[k] >= 4);
-                    if (!active) {
-                        statusEl.textContent = 'Muestra un modelo 3D a la cámara';
-                        if (blobs.length === 0) vertsEl.textContent = 'Vértices: 0';
-                    }
                 }
-                setTimeout(tick, 140);
+                if (running) requestAnimationFrame(tick);
             }
 
             btnStart.addEventListener('click', (e) => { e.stopPropagation(); startCamera(); });
+            btnStartInitial.addEventListener('click', (e) => { e.stopPropagation(); startCamera(); });
             btnFlip.addEventListener('click', (e) => { e.stopPropagation(); facing = facing === 'environment' ? 'user' : 'environment'; startCamera(); });
             document.getElementById('cam-toggle').addEventListener('click', (e) => { e.stopPropagation(); preview.classList.toggle('opacity-0'); });
+
+            // Iniciar cámara automáticamente al cargar la pantalla de inicio
+            startCamera();
         })();
     </script>
 
